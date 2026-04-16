@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { TransactionsPageClient } from "@/components/pages/TransactionsPageClient";
 
 export default function TransactionsPage() {
-  return <PlaceholderPage title="Transactions" stage="Stage 4" />;
+  return <TransactionsPageClient />;
 }

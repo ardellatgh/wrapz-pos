@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { LedgerPageClient } from "@/components/pages/LedgerPageClient";
 
 export default function LedgerPage() {
-  return <PlaceholderPage title="Ledger" stage="Stage 4" />;
+  return <LedgerPageClient />;
 }

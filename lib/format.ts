@@ -15,10 +15,20 @@ export function formatJakartaDateTime(iso: string | Date): string {
   }).format(d);
 }
 
+/** Alias for Stage 4 / docs naming — same as {@link formatJakartaDateTime}. */
+export function formatDateTime(iso: string | Date): string {
+  return formatJakartaDateTime(iso);
+}
+
 /** Queue display: 3-digit zero-padded (single-cashier queue assignment in app). */
 export function formatQueueDisplay(queueNumber: number): string {
   const n = Math.max(0, Math.floor(queueNumber));
   return String(n).padStart(3, "0");
+}
+
+/** Alias for Stage 4 / docs naming — same as {@link formatQueueDisplay}. */
+export function formatQueueNumber(queueNumber: number): string {
+  return formatQueueDisplay(queueNumber);
 }
 
 export function formatDiscountValue(

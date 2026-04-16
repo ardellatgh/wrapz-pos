@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
 
 export function Table({
   className = "",
@@ -34,12 +34,13 @@ export function Th({
 export function Td({
   className = "",
   children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
+  ...rest
+}: TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
   return (
-    <td className={`border-t border-brand-text/5 px-3 py-2 text-brand-text ${className}`}>
+    <td
+      className={`border-t border-brand-text/5 px-3 py-2 text-brand-text ${className}`}
+      {...rest}
+    >
       {children}
     </td>
   );
