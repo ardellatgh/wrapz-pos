@@ -614,6 +614,11 @@ export function KitchenPageClient() {
 
       {loading && orders.length === 0 ? (
         <p className="text-sm text-brand-text/60">Loading orders…</p>
+      ) : !loading && orders.length === 0 ? (
+        <Card className="border-brand-text/10 p-8 text-center shadow-card">
+          <p className="text-sm text-brand-text/75">No active kitchen orders.</p>
+          <p className="mt-2 text-xs text-brand-text/50">Orders appear here after payment or when sent to the kitchen.</p>
+        </Card>
       ) : (
         <div className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto pb-1.5">
           {COLUMNS.map((col) => {

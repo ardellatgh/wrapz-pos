@@ -437,7 +437,9 @@ export function LedgerPageClient() {
       {loading ? (
         <p className="text-sm text-brand-text/60">Loading…</p>
       ) : rows.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-brand-text/70">No ledger entries yet.</Card>
+        <Card className="p-8 text-center text-sm text-brand-text/70">
+          No ledger entries yet. Cash, stock, and order activity will appear here as the event runs.
+        </Card>
       ) : filteredRows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-brand-text/70">
           No ledger entries for this filter.{" "}

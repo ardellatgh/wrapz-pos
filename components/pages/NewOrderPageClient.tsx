@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { formatRupiah } from "@/lib/format";
 import { EVENT_SETTINGS_ROW_ID } from "@/lib/constants";
@@ -34,6 +35,90 @@ type DiscountMode = "none" | "preset" | "manual_percent" | "manual_fixed";
 
 type CartLine = { item: MenuRow; quantity: number };
 
+type BundleComp = { componentItemId: string; qtyPerBundle: number };
+
+type ItemMeta = { name: string; low_stock_threshold: number | null };
+
+type StockIssue = {
+  id: string;
+  kind: "out" | "low";
+  name: string;
+  detail: string;
+  orderedQty: number;
+  available: number;
+  threshold: number;
+};
+
+function thresholdFor(meta: ItemMeta | undefined, defaultLow: number): number {
+  if (meta?.low_stock_threshold != null) return meta.low_stock_threshold;
+  return defaultLow;
+}
+
+/** Aggregate required units per component/menu line (bundles expanded). */
+function componentNeedByItemId(
+  cartLines: CartLine[],
+  bundleComponentsByBundleId: Record<string, BundleComp[]>
+): Map<string, { need: number; label: string }> {
+  const map = new Map<string, { need: number; label: string }>();
+  for (const line of cartLines) {
+    if (line.item.is_bundle) {
+      const comps = bundleComponentsByBundleId[line.item.id] ?? [];
+      for (const c of comps) {
+        const add = line.quantity * c.qtyPerBundle;
+        const prev = map.get(c.componentItemId) ?? { need: 0, label: line.item.name };
+        prev.need += add;
+        map.set(c.componentItemId, prev);
+      }
+    } else {
+      const id = line.item.id;
+      const prev = map.get(id) ?? { need: 0, label: line.item.name };
+      prev.need += line.quantity;
+      map.set(id, prev);
+    }
+  }
+  return map;
+}
+
+function analyzeStockIssues(
+  cartLines: CartLine[],
+  stockById: Record<string, number>,
+  itemMetaById: Record<string, ItemMeta>,
+  defaultLow: number,
+  bundleComponentsByBundleId: Record<string, BundleComp[]>
+): StockIssue[] {
+  const needMap = componentNeedByItemId(cartLines, bundleComponentsByBundleId);
+  const issues: StockIssue[] = [];
+  for (const [itemId, { need, label }] of needMap) {
+    if (need <= 0) continue;
+    const available = stockById[itemId] ?? 0;
+    const meta = itemMetaById[itemId];
+    const name = meta?.name ?? label;
+    const th = thresholdFor(meta, defaultLow);
+    if (available < need) {
+      issues.push({
+        id: `${itemId}-out`,
+        kind: "out",
+        name,
+        detail: `Cart requires ${need} units; recorded stock is ${available}. Stock data may be outdated.`,
+        orderedQty: need,
+        available,
+        threshold: th,
+      });
+    } else if (available <= th) {
+      issues.push({
+        id: `${itemId}-low`,
+        kind: "low",
+        name,
+        detail: `Recorded stock ${available} is at or below low threshold (${th}). Stock data may be outdated.`,
+        orderedQty: need,
+        available,
+        threshold: th,
+      });
+    }
+  }
+  return issues;
+}
+
 export function NewOrderPageClient() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -41,6 +126,10 @@ export function NewOrderPageClient() {
   const [presets, setPresets] = useState<PresetRow[]>([]);
   const [defaultLow, setDefaultLow] = useState(10);
   const [stockById, setStockById] = useState<Record<string, number>>({});
+  const [bundleComponentsByBundleId, setBundleComponentsByBundleId] = useState<
+    Record<string, BundleComp[]>
+  >({});
+  const [itemMetaById, setItemMetaById] = useState<Record<string, ItemMeta>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -51,6 +140,10 @@ export function NewOrderPageClient() {
   const [presetId, setPresetId] = useState<string>("");
   const [manualPercent, setManualPercent] = useState("");
   const [manualFixed, setManualFixed] = useState("");
+
+  const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
+  const [stockAckPhysical, setStockAckPhysical] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -87,6 +180,48 @@ export function NewOrderPageClient() {
       }));
       setMenu(rows);
 
+      const meta: Record<string, ItemMeta> = {};
+      for (const r of rows) {
+        meta[r.id] = { name: r.name, low_stock_threshold: r.low_stock_threshold };
+      }
+
+      const bundleIds = rows.filter((m) => m.is_bundle).map((m) => m.id);
+      const bundleMap: Record<string, BundleComp[]> = {};
+      const componentIds = new Set<string>();
+      if (bundleIds.length > 0) {
+        const { data: bcRows, error: bcErr } = await supabase
+          .from("bundle_components")
+          .select("bundle_id, component_item_id, quantity")
+          .in("bundle_id", bundleIds);
+        if (bcErr) throw bcErr;
+        for (const row of bcRows ?? []) {
+          const bid = row.bundle_id as string;
+          const cid = row.component_item_id as string;
+          const q = Number(row.quantity);
+          if (!bundleMap[bid]) bundleMap[bid] = [];
+          bundleMap[bid].push({ componentItemId: cid, qtyPerBundle: q });
+          componentIds.add(cid);
+        }
+      }
+      setBundleComponentsByBundleId(bundleMap);
+
+      const compIdsToFetch = [...componentIds].filter((id) => !meta[id]);
+      if (compIdsToFetch.length > 0) {
+        const { data: compMenu, error: cmErr } = await supabase
+          .from("menu_items")
+          .select("id, name, low_stock_threshold")
+          .in("id", compIdsToFetch);
+        if (cmErr) throw cmErr;
+        for (const r of compMenu ?? []) {
+          meta[r.id as string] = {
+            name: r.name as string,
+            low_stock_threshold:
+              r.low_stock_threshold == null ? null : Number(r.low_stock_threshold),
+          };
+        }
+      }
+      setItemMetaById(meta);
+
       const { data: presetData, error: pErr } = await supabase
         .from("discount_presets")
         .select("id, name, discount_type, value, min_purchase")
@@ -104,17 +239,18 @@ export function NewOrderPageClient() {
       );
 
       const sellableIds = rows.filter((m) => !m.is_bundle).map((m) => m.id);
-      if (sellableIds.length === 0) {
+      const stockIds = [...new Set([...sellableIds, ...componentIds])];
+      if (stockIds.length === 0) {
         setStockById({});
         return;
       }
       const { data: mov, error: movErr } = await supabase
         .from("stock_movements")
         .select("menu_item_id, quantity_change")
-        .in("menu_item_id", sellableIds);
+        .in("menu_item_id", stockIds);
       if (movErr) throw movErr;
       const sums: Record<string, number> = {};
-      for (const id of sellableIds) sums[id] = 0;
+      for (const id of stockIds) sums[id] = 0;
       for (const row of mov ?? []) {
         const id = row.menu_item_id as string;
         sums[id] = (sums[id] ?? 0) + Number(row.quantity_change);
@@ -190,21 +326,19 @@ export function NewOrderPageClient() {
     });
   }
 
-  async function onProceed() {
-    if (!isSupabaseConfigured() || cartLines.length === 0) return;
-
+  function validateDiscountForProceed(): string | null {
     if (discountMode === "preset") {
-      if (!selectedPreset) {
-        showToast("Select a discount preset.", "error");
-        return;
-      }
+      if (!selectedPreset) return "Select a discount preset.";
       const min = selectedPreset.min_purchase;
       if (min != null && min > 0 && subtotal < min) {
-        showToast(`Minimum purchase ${formatRupiah(min)} not met for this preset.`, "error");
-        return;
+        return `Minimum purchase ${formatRupiah(min)} not met for this preset.`;
       }
     }
+    return null;
+  }
 
+  async function runCreateOrder(stockPrePaymentOverridden: boolean) {
+    if (!isSupabaseConfigured() || cartLines.length === 0) return;
     setSaving(true);
     try {
       const supabase = getSupabaseBrowserClient();
@@ -243,6 +377,8 @@ export function NewOrderPageClient() {
         discountLabel = "Manual fixed";
       }
 
+      const overrideAt = stockPrePaymentOverridden ? new Date().toISOString() : null;
+
       const { data: orderRow, error: oErr } = await supabase
         .from("orders")
         .insert({
@@ -258,6 +394,8 @@ export function NewOrderPageClient() {
           total_amount: totalAmount,
           payment_status: "pending",
           serving_status: "not_sent",
+          stock_pre_payment_overridden: stockPrePaymentOverridden,
+          stock_pre_payment_override_at: overrideAt,
         })
         .select("id")
         .single();
@@ -284,6 +422,43 @@ export function NewOrderPageClient() {
     }
   }
 
+  async function onProceed() {
+    if (!isSupabaseConfigured() || cartLines.length === 0) return;
+    const dErr = validateDiscountForProceed();
+    if (dErr) {
+      showToast(dErr, "error");
+      return;
+    }
+    const issues = analyzeStockIssues(
+      cartLines,
+      stockById,
+      itemMetaById,
+      defaultLow,
+      bundleComponentsByBundleId
+    );
+    if (issues.length === 0) {
+      await runCreateOrder(false);
+      return;
+    }
+    setStockIssues(issues);
+    setStockAckPhysical(false);
+    setStockModalOpen(true);
+  }
+
+  function handleStockModalGoBack() {
+    if (saving) return;
+    setStockModalOpen(false);
+    setStockAckPhysical(false);
+  }
+
+  async function handleStockModalProceed() {
+    const hasOut = stockIssues.some((i) => i.kind === "out");
+    if (hasOut && !stockAckPhysical) return;
+    setStockModalOpen(false);
+    setStockAckPhysical(false);
+    await runCreateOrder(hasOut);
+  }
+
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-xl">
@@ -293,7 +468,10 @@ export function NewOrderPageClient() {
     );
   }
 
+  const stockHasOut = stockIssues.some((i) => i.kind === "out");
+
   return (
+    <>
     <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row">
       <div className="min-w-0 flex-1 space-y-4">
         <div>
@@ -503,7 +681,7 @@ export function NewOrderPageClient() {
           <Button
             type="button"
             className="w-full"
-            disabled={cartLines.length === 0 || saving}
+            disabled={cartLines.length === 0 || saving || stockModalOpen}
             onClick={() => void onProceed()}
           >
             {saving ? "Creating…" : "Proceed to payment"}
@@ -511,5 +689,102 @@ export function NewOrderPageClient() {
         </Card>
       </aside>
     </div>
+
+    <Modal
+      open={stockModalOpen}
+      title="Stock review before payment"
+      size="wide"
+      onClose={() => !saving && handleStockModalGoBack()}
+    >
+      <p className="text-sm text-brand-text/80">
+        Stock levels are computed from recorded movements in Supabase. Another register or delay can make
+        this view outdated.
+      </p>
+      {stockHasOut && (
+        <p className="mt-2 rounded-md border border-red-200 bg-red-50/90 p-2 text-sm text-red-900">
+          At least one item is below the quantity needed for this cart. Go back to change quantities, or
+          override only if you have verified physical stock.
+        </p>
+      )}
+
+      <div className="mt-4 space-y-4 text-sm">
+        {stockIssues.filter((i) => i.kind === "out").length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-800">Out of stock (book)</p>
+            <ul className="mt-2 space-y-2">
+              {stockIssues
+                .filter((i) => i.kind === "out")
+                .map((i) => (
+                  <li key={i.id} className="rounded-lg border border-red-200/80 bg-red-50/50 p-3">
+                    <p className="font-medium text-brand-text">{i.name}</p>
+                    <p className="mt-1 text-xs text-brand-text/75">{i.detail}</p>
+                    <dl className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs text-brand-text/85">
+                      <dt>Units required (cart)</dt>
+                      <dd className="text-right tabular-nums">{i.orderedQty}</dd>
+                      <dt>Recorded available</dt>
+                      <dd className="text-right tabular-nums">{i.available}</dd>
+                    </dl>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+        {stockIssues.filter((i) => i.kind === "low").length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-yellow">Low stock (warning)</p>
+            <ul className="mt-2 space-y-2">
+              {stockIssues
+                .filter((i) => i.kind === "low")
+                .map((i) => (
+                  <li key={i.id} className="rounded-lg border border-brand-yellow/50 bg-brand-yellow/10 p-3">
+                    <p className="font-medium text-brand-text">{i.name}</p>
+                    <p className="mt-1 text-xs text-brand-text/75">{i.detail}</p>
+                    <dl className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs text-brand-text/85">
+                      <dt>Units required (cart)</dt>
+                      <dd className="text-right tabular-nums">{i.orderedQty}</dd>
+                      <dt>Recorded available</dt>
+                      <dd className="text-right tabular-nums">{i.available}</dd>
+                      <dt>Low threshold</dt>
+                      <dd className="text-right tabular-nums">{i.threshold}</dd>
+                    </dl>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {stockHasOut && (
+        <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-brand-text">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={stockAckPhysical}
+            onChange={(e) => setStockAckPhysical(e.target.checked)}
+          />
+          <span>I confirm the physical stock is still available</span>
+        </label>
+      )}
+
+      <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-brand-text/10 pt-4">
+        <Button type="button" variant="secondary" disabled={saving} onClick={handleStockModalGoBack}>
+          Go Back to Edit Order
+        </Button>
+        {!stockHasOut ? (
+          <Button type="button" disabled={saving} onClick={() => void handleStockModalProceed()}>
+            {saving ? "Creating…" : "Continue to payment"}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            disabled={saving || !stockAckPhysical}
+            onClick={() => void handleStockModalProceed()}
+          >
+            {saving ? "Creating…" : "Override and Continue"}
+          </Button>
+        )}
+      </div>
+    </Modal>
+    </>
   );
 }

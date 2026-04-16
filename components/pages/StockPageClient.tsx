@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
 import { Table, Td, Th } from "@/components/ui/Table";
 import { useToast } from "@/components/ui/Toast";
-import { formatJakartaDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import { EVENT_SETTINGS_ROW_ID } from "@/lib/constants";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -315,7 +315,9 @@ export function StockPageClient() {
           Newest first · Waktu ditampilkan dalam WIB (Asia/Jakarta)
         </p>
         {logRows.length === 0 ? (
-          <p className="mt-3 text-sm text-brand-text/60">No movements yet.</p>
+          <p className="mt-3 text-sm text-brand-text/60">
+            No stock movements recorded. Set opening stock to get started.
+          </p>
         ) : (
           <Table className="mt-3">
             <thead>
@@ -331,7 +333,7 @@ export function StockPageClient() {
               {logRows.map((r) => (
                 <tr key={r.id}>
                   <Td className="whitespace-nowrap font-mono text-xs text-brand-text/80">
-                    {formatJakartaDateTime(r.created_at)}
+                    {formatDateTime(r.created_at)}
                   </Td>
                   <Td>{r.menu_items?.name ?? "—"}</Td>
                   <Td className="capitalize">{r.movement_type}</Td>

@@ -38,3 +38,25 @@ export function formatDiscountValue(
   if (type === "percent") return `${value}%`;
   return formatRupiah(value);
 }
+
+/** ZIP basename for full backup: `Backup_DDMMYYYY_HHMM` in Asia/Jakarta (no extension). */
+export function formatBackupZipBasename(): string {
+  const d = new Date();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: JAKARTA_TZ,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  const day = get("day");
+  const month = get("month");
+  const year = get("year").replace(/\D/g, "").slice(-4);
+  const hour = get("hour");
+  const minute = get("minute");
+  return `Backup_${day}${month}${year}_${hour}${minute}`;
+}

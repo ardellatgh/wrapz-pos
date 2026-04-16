@@ -14,6 +14,8 @@ type Row = {
   event_name: string;
   queue_start: number;
   default_low_stock_threshold: number;
+  /** Whole rupiah goal for dashboard; empty = no target */
+  target_revenue: string;
 };
 
 export function SettingsPageClient() {
@@ -24,6 +26,7 @@ export function SettingsPageClient() {
     event_name: "",
     queue_start: 1,
     default_low_stock_threshold: 10,
+    target_revenue: "",
   });
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -38,17 +41,20 @@ export function SettingsPageClient() {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("event_settings")
-        .select("event_name, queue_start, default_low_stock_threshold")
+        .select("event_name, queue_start, default_low_stock_threshold, target_revenue")
         .eq("id", EVENT_SETTINGS_ROW_ID)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
+        const tr = data.target_revenue;
         setForm({
           event_name: data.event_name ?? "",
           queue_start: data.queue_start ?? 1,
           default_low_stock_threshold: data.default_low_stock_threshold ?? 10,
+          target_revenue:
+            tr != null && Number(tr) > 0 ? String(Math.round(Number(tr))) : "",
         });
       }
     } catch (e) {
@@ -68,6 +74,11 @@ export function SettingsPageClient() {
     setSaving(true);
     try {
       const supabase = getSupabaseBrowserClient();
+      const rawTarget = form.target_revenue.trim().replace(/\s/g, "");
+      const parsedTarget = rawTarget === "" ? null : Math.max(0, Math.round(Number(rawTarget) || 0));
+      const target_revenue =
+        parsedTarget == null || parsedTarget === 0 ? null : parsedTarget;
+
       const { error } = await supabase.from("event_settings").upsert(
         {
           id: EVENT_SETTINGS_ROW_ID,
@@ -77,6 +88,7 @@ export function SettingsPageClient() {
             0,
             Number(form.default_low_stock_threshold) || 0
           ),
+          target_revenue,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
@@ -103,7 +115,8 @@ export function SettingsPageClient() {
     <div className="mx-auto max-w-xl">
       <h1 className="font-display text-2xl font-semibold text-brand-text">Event Settings</h1>
       <p className="mt-1 text-sm text-brand-text/65">
-        Singleton configuration for the wisuda stall (Asia/Jakarta).
+        Singleton configuration for the wisuda stall (Asia/Jakarta). Requires an internet connection to
+        Supabase.
       </p>
 
       {loadError && (
@@ -164,6 +177,23 @@ export function SettingsPageClient() {
                   }))
                 }
               />
+            </div>
+            <div>
+              <Label htmlFor="target_revenue">Target revenue (optional)</Label>
+              <Input
+                id="target_revenue"
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                placeholder="e.g. 5000000"
+                value={form.target_revenue}
+                onChange={(e) => setForm((f) => ({ ...f, target_revenue: e.target.value }))}
+              />
+              <p className="mt-1 text-xs text-brand-text/55">
+                Whole rupiah sales goal for the event. Used on the dashboard (net sales vs target). Leave empty
+                to hide progress.
+              </p>
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? "Saving…" : "Save settings"}

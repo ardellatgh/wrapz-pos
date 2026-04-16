@@ -95,7 +95,8 @@ export function CashPageClient() {
   const [refillNotes, setRefillNotes] = useState("");
   const [refilling, setRefilling] = useState(false);
 
-  const [closeModal, setCloseModal] = useState(false);
+  /** null = closed; count = enter counted cash; confirm = explicit close after review */
+  const [closeFlow, setCloseFlow] = useState<null | "count" | "confirm">(null);
   const [countedInput, setCountedInput] = useState("");
   const [closing, setClosing] = useState(false);
 
@@ -312,7 +313,7 @@ export function CashPageClient() {
         .eq("status", "open");
       if (error) throw error;
       showToast("Session closed.");
-      setCloseModal(false);
+      setCloseFlow(null);
       setCountedInput("");
       await load();
     } catch (err) {
@@ -394,7 +395,7 @@ export function CashPageClient() {
               </div>
             </dl>
             <div className="mt-4">
-              <Button type="button" variant="secondary" onClick={() => setCloseModal(true)}>
+              <Button type="button" variant="secondary" onClick={() => setCloseFlow("count")}>
                 Close session
               </Button>
             </div>
@@ -543,12 +544,17 @@ export function CashPageClient() {
       )}
 
       <Modal
-        open={closeModal}
-        title="Close cash session"
-        onClose={() => !closing && setCloseModal(false)}
+        open={closeFlow != null}
+        title={closeFlow === "confirm" ? "Confirm close session" : "Close cash session"}
+        onClose={() => !closing && setCloseFlow(null)}
       >
-        {activeSummary && (
+        {activeSummary && closeFlow === "count" && (
           <div className="space-y-4 text-sm">
+            <p className="text-brand-text/85">
+              You are starting the close flow for the <strong>active</strong> cash session. Enter the physical
+              cash you counted, then review and confirm on the next step. Closing records final numbers in
+              Supabase.
+            </p>
             <dl className="space-y-2 rounded-lg bg-brand-bg/80 p-3">
               <div className="flex justify-between gap-4">
                 <dt>Opening float</dt>
@@ -572,7 +578,7 @@ export function CashPageClient() {
               </div>
             </dl>
             <div>
-              <Label htmlFor="counted">Actual counted cash (Rp)</Label>
+              <Label htmlFor="counted">Counted cash (Rp)</Label>
               <Input
                 id="counted"
                 inputMode="numeric"
@@ -582,17 +588,69 @@ export function CashPageClient() {
               />
             </div>
             <p className="text-sm">
-              Variance (counted − expected):{" "}
+              Variance preview (counted − expected):{" "}
               <span className={`font-mono tabular-nums ${varianceClass(closePreviewVariance)}`}>
                 {formatRupiah(closePreviewVariance)}
               </span>
             </p>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setCloseModal(false)} disabled={closing}>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setCloseFlow(null)} disabled={closing}>
                 Cancel
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  const n = parseRupiahInput(countedInput);
+                  if (n < 0) {
+                    showToast("Counted cash must be zero or positive.", "error");
+                    return;
+                  }
+                  setCloseFlow("confirm");
+                }}
+                disabled={closing}
+              >
+                Continue to confirmation
+              </Button>
+            </div>
+          </div>
+        )}
+        {activeSummary && closeFlow === "confirm" && (
+          <div className="space-y-4 text-sm">
+            <p className="font-medium text-brand-text">
+              You are about to <strong>close</strong> the active cash session. This finalizes the session in
+              Supabase.
+            </p>
+            <dl className="space-y-2 rounded-lg border border-brand-text/15 bg-brand-bg/80 p-3">
+              <div className="flex justify-between gap-4">
+                <dt>Expected closing cash</dt>
+                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.expected)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Counted cash</dt>
+                <dd className="font-mono tabular-nums">{formatRupiah(parseRupiahInput(countedInput))}</dd>
+              </div>
+              <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-semibold">
+                <dt>Variance</dt>
+                <dd className={`font-mono tabular-nums ${varianceClass(closePreviewVariance)}`}>
+                  {formatRupiah(closePreviewVariance)}
+                </dd>
+              </div>
+            </dl>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setCloseFlow(null)} disabled={closing}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setCloseFlow("count")}
+                disabled={closing}
+              >
+                Back
+              </Button>
               <Button type="button" onClick={() => void onConfirmClose()} disabled={closing}>
-                {closing ? "Closing…" : "Confirm close"}
+                {closing ? "Closing…" : "Confirm close session"}
               </Button>
             </div>
           </div>

@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { ExportPageClient } from "@/components/pages/ExportPageClient";
 
 export default function ExportPage() {
-  return <PlaceholderPage title="Export / Backup" stage="Stage 6" />;
+  return <ExportPageClient />;
 }

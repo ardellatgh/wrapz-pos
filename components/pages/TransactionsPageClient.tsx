@@ -251,11 +251,11 @@ export function TransactionsPageClient() {
         <p className="text-sm text-brand-text/60">Loading…</p>
       ) : orders.length === 0 ? (
         <Card className="p-8 text-center text-sm text-brand-text/70">
-          No orders yet. Create the first order from{" "}
+          No transactions yet.{" "}
           <Link href="/order/new" className="font-medium text-brand-red underline">
-            New Order
-          </Link>
-          .
+            Create the first order
+          </Link>{" "}
+          to begin.
         </Card>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-brand-text/10 bg-white shadow-card">

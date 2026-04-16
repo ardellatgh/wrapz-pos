@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { DashboardPageClient } from "@/components/pages/DashboardPageClient";
 
 export default function DashboardPage() {
-  return <PlaceholderPage title="Dashboard" stage="Stage 6" />;
+  return <DashboardPageClient />;
 }

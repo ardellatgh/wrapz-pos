@@ -58,6 +58,7 @@ export function MenuPageClient() {
     is_bundle: false,
   });
   const [bundleLines, setBundleLines] = useState<BundleLine[]>([]);
+  const [bundleComponentCounts, setBundleComponentCounts] = useState<Record<string, number>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -70,11 +71,18 @@ export function MenuPageClient() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("menu_items")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [{ data, error }, bcRes] = await Promise.all([
+        supabase.from("menu_items").select("*").order("created_at", { ascending: false }),
+        supabase.from("bundle_components").select("bundle_id"),
+      ]);
       if (error) throw error;
+      if (bcRes.error) throw bcRes.error;
+      const counts: Record<string, number> = {};
+      for (const r of bcRes.data ?? []) {
+        const bid = r.bundle_id as string;
+        counts[bid] = (counts[bid] ?? 0) + 1;
+      }
+      setBundleComponentCounts(counts);
       setRows((data ?? []).map(mapMenuRow));
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Failed to load menu");
@@ -393,7 +401,12 @@ export function MenuPageClient() {
                   <Td className="font-mono text-xs">{formatRupiah(r.price)}</Td>
                   <Td>
                     {r.is_bundle ? (
-                      <Badge tone="warning">Bundle</Badge>
+                      <span className="flex flex-wrap items-center gap-1">
+                        <Badge tone="warning">Bundle</Badge>
+                        {(bundleComponentCounts[r.id] ?? 0) === 0 ? (
+                          <Badge tone="warning">No components</Badge>
+                        ) : null}
+                      </span>
                     ) : (
                       <Badge tone="muted">Item</Badge>
                     )}

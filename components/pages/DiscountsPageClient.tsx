@@ -193,7 +193,9 @@ export function DiscountsPageClient() {
         {loading ? (
           <p className="p-4 text-sm text-brand-text/60">Loading…</p>
         ) : rows.length === 0 ? (
-          <p className="p-4 text-sm text-brand-text/60">No presets yet. Add one to get started.</p>
+          <p className="p-4 text-sm text-brand-text/60">
+            No discount presets. Add one to offer discounts to customers.
+          </p>
         ) : (
           <Table>
             <thead>
