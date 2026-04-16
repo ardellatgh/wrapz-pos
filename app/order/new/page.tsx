@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { NewOrderPageClient } from "@/components/pages/NewOrderPageClient";
 
 export default function NewOrderPage() {
-  return <PlaceholderPage title="New Order" stage="Stage 3" />;
+  return <NewOrderPageClient />;
 }

@@ -15,6 +15,12 @@ export function formatJakartaDateTime(iso: string | Date): string {
   }).format(d);
 }
 
+/** Queue display: 3-digit zero-padded (single-cashier queue assignment in app). */
+export function formatQueueDisplay(queueNumber: number): string {
+  const n = Math.max(0, Math.floor(queueNumber));
+  return String(n).padStart(3, "0");
+}
+
 export function formatDiscountValue(
   type: "percent" | "fixed",
   value: number
