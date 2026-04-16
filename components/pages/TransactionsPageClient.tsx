@@ -224,7 +224,11 @@ export function TransactionsPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader title="Transactions" description="Read-only order log · Times in WIB (Asia/Jakarta)" />
+        <PageHeader
+          eyebrow="Orders"
+          title="Transactions"
+          description="Read-only order log · Times in WIB (Asia/Jakarta)"
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -233,6 +237,7 @@ export function TransactionsPageClient() {
   return (
     <div className="mx-auto max-w-[1100px] space-y-4">
       <PageHeader
+        eyebrow="Orders"
         title="Transactions"
         description="Read-only order log · Times in WIB (Asia/Jakarta)"
         actions={
@@ -292,11 +297,11 @@ export function TransactionsPageClient() {
                         onClick={() => setExpandedId(expanded ? null : o.id)}
                       >
                         <Td className="whitespace-nowrap align-top">
-                          <span className="inline-block rounded-md bg-brand-red/10 px-2 py-0.5 font-mono text-sm font-semibold text-brand-red">
+                          <span className="inline-block rounded-md bg-brand-red/10 px-2 py-0.5 font-sans tabular-nums text-sm font-semibold text-brand-red">
                             #{formatQueueNumber(o.queue_number)}
                           </span>
                         </Td>
-                        <Td className="whitespace-nowrap align-top font-mono text-xs text-brand-text/80">
+                        <Td className="whitespace-nowrap align-top font-sans tabular-nums text-xs text-brand-text/80">
                           {formatDateTime(o.created_at)}
                         </Td>
                         <Td className="align-top text-brand-text/90">
@@ -305,13 +310,13 @@ export function TransactionsPageClient() {
                         <Td className="max-w-[200px] align-top text-xs text-brand-text/80">
                           {compactItems(items)}
                         </Td>
-                        <Td className="align-top text-right font-mono tabular-nums">
+                        <Td className="align-top text-right font-sans tabular-nums">
                           {formatRupiah(o.subtotal)}
                         </Td>
-                        <Td className="align-top text-right font-mono tabular-nums text-brand-text/80">
+                        <Td className="align-top text-right font-sans tabular-nums text-brand-text/80">
                           {o.discount_amount === 0 ? "—" : formatRupiah(o.discount_amount)}
                         </Td>
-                        <Td className="align-top text-right font-mono text-sm font-semibold tabular-nums">
+                        <Td className="align-top text-right font-sans tabular-nums text-sm font-semibold tabular-nums">
                           {formatRupiah(o.total_amount)}
                         </Td>
                         <Td className="align-top text-xs">{methodChain(pay, settles)}</Td>
@@ -399,9 +404,9 @@ function DetailPanel({
             {items.map((it, i) => (
               <tr key={i}>
                 <Td>{it.item_name}</Td>
-                <Td className="text-right font-mono">{it.quantity}</Td>
-                <Td className="text-right font-mono">{formatRupiah(it.item_price)}</Td>
-                <Td className="text-right font-mono">{formatRupiah(it.line_total)}</Td>
+                <Td className="text-right font-sans tabular-nums">{it.quantity}</Td>
+                <Td className="text-right font-sans tabular-nums">{formatRupiah(it.item_price)}</Td>
+                <Td className="text-right font-sans tabular-nums">{formatRupiah(it.line_total)}</Td>
               </tr>
             ))}
           </tbody>
@@ -419,7 +424,7 @@ function DetailPanel({
             </li>
             <li>Amount tendered: {formatRupiah(payment.amount_tendered)}</li>
             <li>Exact: {payment.is_exact ? "Yes" : "No"}</li>
-            <li className="font-mono text-xs text-brand-text/60">
+            <li className="font-sans tabular-nums text-xs text-brand-text/60">
               Recorded {formatDateTime(payment.created_at)}
             </li>
           </ul>
@@ -454,7 +459,7 @@ function DetailPanel({
                 {s.notes?.trim() && (
                   <div className="mt-1 text-xs text-brand-text/70">Note: {s.notes}</div>
                 )}
-                <div className="mt-1 font-mono text-xs text-brand-text/50">
+                <div className="mt-1 font-sans tabular-nums text-xs text-brand-text/50">
                   {formatDateTime(s.created_at)}
                 </div>
               </li>

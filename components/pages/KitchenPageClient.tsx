@@ -71,7 +71,7 @@ const COLUMNS: { key: BoardServingStatus; label: string; headerClass: string }[]
   {
     key: "ready_to_serve",
     label: "Ready to Serve",
-    headerClass: "bg-semantic-success/8 border-b-2 border-semantic-success text-semantic-success",
+    headerClass: "bg-brand-green/8 border-b-2 border-brand-green text-brand-green",
   },
   {
     key: "served",
@@ -262,7 +262,7 @@ export function KitchenPageClient() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
   const loadBoard = useCallback(async (opts?: { silent?: boolean }) => {
     if (!isSupabaseConfigured()) {
@@ -429,10 +429,8 @@ export function KitchenPageClient() {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, [setKiosk]);
 
-  const secondsSinceUpdate = useMemo(() => {
-    if (lastUpdatedAt == null) return null;
-    return Math.max(0, Math.floor((Date.now() - lastUpdatedAt) / 1000));
-  }, [lastUpdatedAt, tick]);
+  const secondsSinceUpdate =
+    lastUpdatedAt == null ? null : Math.max(0, Math.floor((Date.now() - lastUpdatedAt) / 1000));
 
   const ordersByColumn = useMemo(() => {
     const m = new Map<BoardServingStatus, KitchenOrder[]>();
@@ -580,7 +578,11 @@ export function KitchenPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader title="Kitchen" description="Live queue for prep and handoff. Auto-refreshes on an interval." />
+        <PageHeader
+          eyebrow="Service line"
+          title="Kitchen"
+          description="Live queue for prep and handoff. Auto-refreshes on an interval."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -594,7 +596,11 @@ export function KitchenPageClient() {
         className={`mb-3 flex-shrink-0 ${kiosk ? "border-b border-brand-text/10 bg-white px-3 py-2" : ""}`}
       >
         <PageHeader
-          className={kiosk ? "!border-0 pb-0" : ""}
+          className={
+            kiosk
+              ? "!mb-3 !border-0 !bg-transparent !px-0 !py-0 !shadow-none sm:!px-0"
+              : ""
+          }
           eyebrow="Service line"
           title="Kitchen"
           description={
@@ -654,7 +660,7 @@ export function KitchenPageClient() {
               >
                 <header className={`rounded-t-lg px-3 py-2 ${col.headerClass}`}>
                   <h2 className="font-sans text-base font-semibold tracking-tight">{col.label}</h2>
-                  <p className="mt-0 font-mono text-[10px] text-brand-text/55">{list.length} orders</p>
+                  <p className="mt-0 font-sans tabular-nums text-[10px] text-brand-text/55">{list.length} orders</p>
                 </header>
                 <div className="flex max-h-[calc(100vh-188px)] flex-col gap-1.5 overflow-y-auto p-1.5">
                   {list.map((order) => (
@@ -687,7 +693,7 @@ export function KitchenPageClient() {
 }
 
 const noteTextareaClass =
-  "w-full resize-y rounded border border-brand-text/10 bg-white/80 px-1.5 py-1 text-[11px] leading-snug text-brand-text/85 shadow-none outline-none transition placeholder:text-brand-text/32 focus:border-brand-red/35 focus:ring-1 focus:ring-brand-red/12";
+  "w-full resize-y rounded-ref-sm border border-brand-text/8 bg-brand-fill px-1 py-0.5 text-[10px] leading-tight text-brand-text/75 shadow-none outline-none transition placeholder:text-brand-text/35 focus:border-brand-yellow/60 focus:ring-1 focus:ring-brand-yellow/20";
 
 function KitchenOrderCard({
   order,
@@ -741,7 +747,7 @@ function KitchenOrderCard({
     >
       <header className="space-y-0 border-b border-brand-text/10 pb-1.5">
         <p
-          className={`font-mono text-lg font-bold tabular-nums leading-tight tracking-tight text-brand-red ${
+          className={`font-display text-2xl font-normal leading-none tracking-wide text-brand-red ${
             muted ? "text-brand-text/40" : ""
           }`}
         >
@@ -752,7 +758,7 @@ function KitchenOrderCard({
         </p>
         <div className="flex flex-wrap items-baseline justify-between gap-x-2 pt-0.5">
           <span className="text-[10px] font-medium uppercase tracking-wide text-brand-text/45">Waiting</span>
-          <span className={`font-mono text-[11px] font-semibold ${muted ? "text-brand-text/50" : "text-brand-text"}`}>
+          <span className={`font-sans tabular-nums text-[11px] font-semibold ${muted ? "text-brand-text/50" : "text-brand-text"}`}>
             {waitingLabel}
           </span>
         </div>
@@ -762,13 +768,13 @@ function KitchenOrderCard({
       <div className="space-y-0.5" role="group" aria-label="Checklist progress">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] font-medium uppercase tracking-wide text-brand-text/40">Progress</span>
-          <span className="font-mono text-[10px] tabular-nums text-brand-text/50">
+          <span className="font-sans text-[10px] font-semibold tabular-nums text-brand-text/50">
             {progress.done}/{progress.total}
           </span>
         </div>
         <div className="h-1 w-full overflow-hidden rounded-full bg-brand-text/10">
           <div
-            className="h-full rounded-full bg-semantic-success/55 transition-[width] duration-200 ease-out"
+            className="h-full rounded-full bg-brand-green/70 transition-[width] duration-200 ease-out"
             style={{ width: `${progress.pct}%` }}
           />
         </div>
@@ -781,7 +787,7 @@ function KitchenOrderCard({
         </div>
         <div className="flex justify-between gap-2">
           <span className="text-brand-text/45">Confirmed</span>
-          <span className="font-mono text-[10px] text-brand-text/70">
+          <span className="font-sans tabular-nums text-[10px] text-brand-text/70">
             {order.confirmed_at ? formatJakartaDateTime(order.confirmed_at) : "—"}
           </span>
         </div>
@@ -797,11 +803,11 @@ function KitchenOrderCard({
                 <div className="flex min-h-[32px] items-start gap-1.5 py-1 pl-0.5">
                   <span
                     className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-brand-text/20 ${
-                      bundleDone ? "border-semantic-success/80 bg-semantic-success/10" : "bg-white"
+                      bundleDone ? "border-brand-green/80 bg-brand-green/10" : "bg-white"
                     }`}
                     aria-hidden
                   >
-                    {bundleDone ? <span className="text-xs leading-none text-semantic-success">✓</span> : null}
+                    {bundleDone ? <span className="text-xs leading-none text-brand-green">✓</span> : null}
                   </span>
                   <span
                     className={`text-xs font-semibold leading-snug ${
@@ -826,12 +832,12 @@ function KitchenOrderCard({
                       >
                         <span
                           className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-brand-text/25 ${
-                            comp.checked ? "border-semantic-success bg-semantic-success/15" : "bg-white"
+                            comp.checked ? "border-brand-green bg-brand-green/15" : "bg-white"
                           }`}
                           aria-hidden
                         >
                           {comp.checked ? (
-                            <span className="text-xs leading-none text-semantic-success">✓</span>
+                            <span className="text-xs leading-none text-brand-green">✓</span>
                           ) : null}
                         </span>
                         <span
@@ -844,7 +850,7 @@ function KitchenOrderCard({
                           }`}
                         >
                           <span className="font-semibold">{comp.component_name}</span>
-                          <span className="ml-1 font-mono text-[11px] text-brand-text/55">×{comp.qtyTotal}</span>
+                          <span className="ml-1 font-sans tabular-nums text-[11px] text-brand-text/55">×{comp.qtyTotal}</span>
                           <span className="ml-1 text-[10px] text-brand-text/40">({comp.qtyPerBundle} per bundle)</span>
                         </span>
                       </button>
@@ -867,11 +873,11 @@ function KitchenOrderCard({
               >
                 <span
                   className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-brand-text/25 ${
-                    line.is_checked ? "border-semantic-success bg-semantic-success/15" : "bg-white"
+                    line.is_checked ? "border-brand-green bg-brand-green/15" : "bg-white"
                   }`}
                   aria-hidden
                 >
-                  {line.is_checked ? <span className="text-xs leading-none text-semantic-success">✓</span> : null}
+                  {line.is_checked ? <span className="text-xs leading-none text-brand-green">✓</span> : null}
                 </span>
                 <span
                   className={`text-xs font-semibold leading-snug ${
@@ -904,25 +910,25 @@ function KitchenOrderCard({
         </div>
       )}
 
-      <div className="space-y-1 rounded border border-dashed border-brand-text/10 bg-brand-bg/25 px-1.5 py-1">
-        <label className="text-[10px] font-medium uppercase tracking-wide text-brand-text/38" htmlFor={`kn-${order.id}`}>
-          Kitchen note
+      <div className="space-y-0.5 rounded-ref-sm border border-dashed border-brand-text/8 bg-brand-fill/40 px-1 py-0.5">
+        <label className="text-[9px] font-semibold uppercase tracking-wide text-brand-text/35" htmlFor={`kn-${order.id}`}>
+          Note
         </label>
         <textarea
           id={`kn-${order.id}`}
           rows={1}
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}
-          placeholder="Optional…"
+          placeholder="Optional"
           className={noteTextareaClass}
         />
         <Button
           type="button"
           variant="secondary"
-          className="w-full min-h-[28px] px-2 text-[10px]"
+          className="w-full min-h-[26px] px-1.5 py-0.5 text-[10px] font-semibold leading-none"
           onClick={() => onSaveNote(noteDraft)}
         >
-          Save note
+          Save
         </Button>
       </div>
 
@@ -936,7 +942,7 @@ function KitchenOrderCard({
           <Button
             type="button"
             variant="primary"
-            className={`min-h-[38px] w-full text-xs ${allChecked ? "bg-semantic-success hover:bg-semantic-success/90" : ""}`}
+            className={`min-h-[38px] w-full text-xs ${allChecked ? "bg-brand-green hover:bg-brand-green/90" : ""}`}
             disabled={!allChecked}
             onClick={onMarkReady}
           >
@@ -947,7 +953,7 @@ function KitchenOrderCard({
           <Button
             type="button"
             variant="primary"
-            className="min-h-[38px] w-full bg-semantic-success text-xs hover:bg-semantic-success/90"
+            className="min-h-[38px] w-full bg-brand-green text-xs hover:bg-brand-green/90"
             onClick={onServed}
           >
             Served

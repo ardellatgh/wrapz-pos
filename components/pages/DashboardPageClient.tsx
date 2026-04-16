@@ -190,6 +190,7 @@ export function DashboardPageClient() {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
         <PageHeader
+          eyebrow="Live board"
           title="Dashboard"
           description="Read-only operational summary for the active event."
         />
@@ -200,49 +201,46 @@ export function DashboardPageClient() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col gap-4 rounded-2xl border border-brand-text/10 bg-white px-5 py-5 sm:flex-row sm:items-stretch sm:justify-between">
-        <div className="flex min-w-0 flex-1 gap-4">
-          <div className="w-1 shrink-0 self-stretch rounded-full bg-brand-red" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-red">Live board</p>
-            <h1 className="font-narrow text-[1.75rem] font-bold uppercase leading-[1.1] tracking-tight text-brand-text md:text-[2rem]">
-              Dashboard
-            </h1>
-            <p className="mt-1.5 text-sm text-brand-text/70">
-              Read-only operational summary · Refreshes every {REFRESH_MS / 1000}s
-              {lastRefreshedAt != null && (
-                <span className="mt-1 block text-xs text-brand-text/50">
-                  Last refreshed: {formatDateTime(new Date(lastRefreshedAt))}
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
-          {data && setupDone && (
-            <div
-              className="inline-flex items-center gap-2 self-start rounded-full border border-semantic-success/40 bg-semantic-success/10 px-3 py-2 text-xs font-semibold text-semantic-success sm:self-end"
-              role="status"
-            >
-              <span
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-semantic-success text-[11px] text-white"
-                aria-hidden
-              >
-                ✓
+      <PageHeader
+        eyebrow="Live board"
+        title="Dashboard"
+        description={
+          <>
+            Read-only operational summary · Refreshes every {REFRESH_MS / 1000}s
+            {lastRefreshedAt != null && (
+              <span className="mt-1 block text-xs text-brand-text/50">
+                Last refreshed: {formatDateTime(new Date(lastRefreshedAt))}
               </span>
-              <span className="max-w-[11rem] leading-tight">Event setup complete</span>
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="secondary"
-            className="shrink-0 border-brand-red/20"
-            onClick={() => void load({ silent: true })}
-          >
-            Refresh
-          </Button>
-        </div>
-      </div>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {data && setupDone && (
+              <div
+                className="inline-flex items-center gap-2 self-start rounded-full border border-brand-green/35 bg-brand-green/10 px-2.5 py-1.5 text-[11px] font-semibold text-brand-green sm:self-end"
+                role="status"
+              >
+                <span
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-green text-[10px] text-white"
+                  aria-hidden
+                >
+                  ✓
+                </span>
+                <span className="max-w-[10rem] leading-tight">Setup OK</span>
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0 border-brand-red/20"
+              onClick={() => void load({ silent: true })}
+            >
+              Refresh
+            </Button>
+          </>
+        }
+      />
 
       {loadError && (
         <Card className="border-red-200 bg-red-50/90 p-3 text-sm text-red-900">{loadError}</Card>
@@ -257,7 +255,7 @@ export function DashboardPageClient() {
       ) : data && data.anyOrdersCount === 0 ? (
         <Card className="border-brand-text/10 p-0 text-center">
           <div className="py-12 text-center">
-            <p className="font-narrow text-lg font-bold uppercase tracking-wide text-brand-text/55">No orders yet</p>
+            <p className="font-display text-xl font-normal uppercase tracking-wide text-brand-text/55">No orders yet</p>
             <p className="mt-1 text-sm text-brand-text/45">Start the event by creating the first order.</p>
             <Link
               href="/order/new"
@@ -270,7 +268,7 @@ export function DashboardPageClient() {
       ) : data ? (
         <>
           {showCashWarning && (
-            <Card className="border-semantic-warning/45 bg-amber-50/90 p-3 text-sm text-brand-text ring-1 ring-semantic-warning/15">
+            <Card className="border-brand-yellow/40 bg-brand-yellow-soft p-3 text-sm text-brand-text ring-1 ring-brand-yellow/25">
               Cash session not open. Set opening cash before processing orders.{" "}
               <Link href="/cash" className="font-medium text-brand-red underline">
                 Cash Control
@@ -278,7 +276,7 @@ export function DashboardPageClient() {
             </Card>
           )}
           {showStockWarning && (
-            <Card className="border-semantic-warning/45 bg-amber-50/90 p-3 text-sm text-brand-text ring-1 ring-semantic-warning/15">
+            <Card className="border-brand-yellow/40 bg-brand-yellow-soft p-3 text-sm text-brand-text ring-1 ring-brand-yellow/25">
               Opening stock not recorded. Set stock before the event starts.{" "}
               <Link href="/stock" className="font-medium text-brand-red underline">
                 Stock
@@ -287,8 +285,8 @@ export function DashboardPageClient() {
           )}
 
           {!setupDone ? (
-            <Card className="border-semantic-warning/40 bg-amber-50/35 p-5 ring-1 ring-semantic-warning/15">
-              <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text">Event readiness</h2>
+            <Card className="border-brand-yellow/40 bg-brand-yellow-soft/80 p-4 ring-1 ring-brand-yellow/20">
+              <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-text">Event readiness</h2>
               <p className="mt-1 text-xs text-brand-text/60">Complete each item before go-live.</p>
               <ul className="mt-4 space-y-2.5 text-sm">
                 <ReadinessRow ok={data.readiness.eventNameOk} label="Event name configured" href="/settings" />
@@ -299,16 +297,16 @@ export function DashboardPageClient() {
             </Card>
           ) : null}
 
-          <Card className="overflow-hidden border-brand-red/25 bg-white p-5 ring-1 ring-brand-red/10">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-text/8 pb-4">
+          <Card className="overflow-hidden border-brand-red/20 bg-white p-5 shadow-card">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-text/10 pb-4">
               <div>
-                <h2 className="font-narrow text-sm font-bold uppercase tracking-[0.12em] text-brand-text/75">
+                <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">
                   Net sales vs target
                 </h2>
                 <p className="mt-1 text-xs text-brand-text/55">Paid orders · goal from Event Settings</p>
               </div>
               {progressPct != null && (
-                <span className="rounded-md bg-brand-text px-3 py-1.5 font-narrow text-base font-bold tabular-nums text-white">
+                <span className="rounded-ref-sm bg-brand-text px-2.5 py-1 font-display text-lg font-normal tabular-nums tracking-wide text-white">
                   {progressPct}%
                 </span>
               )}
@@ -334,7 +332,7 @@ export function DashboardPageClient() {
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-text/45">
                       Net sales
                     </p>
-                    <p className="font-narrow mt-2 text-3xl font-bold tabular-nums tracking-tight text-brand-red">
+                    <p className="font-display mt-2 text-3xl font-normal tabular-nums tracking-wide text-brand-red">
                       {formatRupiah(data.netSales)}
                     </p>
                   </div>
@@ -342,7 +340,7 @@ export function DashboardPageClient() {
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-semantic-info/70">
                       Target revenue
                     </p>
-                    <p className="font-narrow mt-2 text-3xl font-bold tabular-nums tracking-tight text-brand-text">
+                    <p className="font-display mt-2 text-3xl font-normal tabular-nums tracking-wide text-brand-text">
                       {formatRupiah(data.targetRevenue)}
                     </p>
                   </div>
@@ -365,45 +363,45 @@ export function DashboardPageClient() {
 
           <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:overflow-visible [&::-webkit-scrollbar]:hidden">
             <KpiTile
+              label="Net sales"
+              value={formatRupiah(data.netSales)}
+              className="border-brand-red/35 bg-brand-red-soft/90"
+              labelClassName="text-brand-red/60"
+              valueClassName="text-brand-red"
+            />
+            <KpiTile
               label="Gross sales"
               value={formatRupiah(data.grossSales)}
-              className="border-sky-200/90 bg-sky-50/70"
-              labelClassName="text-sky-900/50"
-              valueClassName="text-sky-950"
+              className="border-semantic-info/25 bg-semantic-info/8"
+              labelClassName="text-semantic-info/55"
+              valueClassName="text-semantic-info"
             />
             <KpiTile
               label="Discount total"
               value={formatRupiah(data.discountTotal)}
-              className="border-amber-200/90 bg-amber-50/80"
-              labelClassName="text-amber-900/50"
-              valueClassName="text-amber-950"
-            />
-            <KpiTile
-              label="Net sales"
-              value={formatRupiah(data.netSales)}
-              className="border-brand-red/35 bg-brand-red/[0.06]"
-              labelClassName="text-brand-red/55"
-              valueClassName="text-brand-red"
+              className="border-brand-yellow/45 bg-brand-yellow-soft"
+              labelClassName="text-brand-text/50"
+              valueClassName="text-brand-text"
             />
             <KpiTile
               label="Total orders"
               value={String(data.totalPaidOrders)}
               hint="Paid orders only"
-              className="border-brand-text/15 bg-brand-bg/90"
+              className="border-brand-text/12 bg-brand-fill/80"
               labelClassName="text-brand-text/45"
               valueClassName="text-brand-text"
             />
             <KpiTile
               label="AOV"
               value={data.totalPaidOrders > 0 ? formatRupiah(Math.round(data.aov)) : "—"}
-              className="border-violet-200/90 bg-violet-50/70"
-              labelClassName="text-violet-900/50"
-              valueClassName="text-violet-950"
+              className="border-brand-green/30 bg-brand-green/10"
+              labelClassName="text-brand-green/60"
+              valueClassName="text-brand-green"
             />
           </div>
 
           <Card className="border-brand-text/10 bg-white p-5">
-            <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text/80">Top selling menu</h2>
+            <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">Top selling menu</h2>
             <p className="mt-0.5 text-xs text-brand-text/55">Units sold on paid orders · top 5</p>
             {data.topSelling.length === 0 ? (
               <p className="mt-4 text-sm text-brand-text/60">No line items yet.</p>
@@ -413,19 +411,19 @@ export function DashboardPageClient() {
                   const pct = Math.round((row.units / topMaxUnits) * 100);
                   return (
                     <li key={row.menu_item_id} className="flex gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-brand-text/15 bg-brand-bg font-mono text-sm font-semibold text-brand-text">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-ref-sm border border-brand-text/12 bg-brand-fill font-display text-base font-normal text-brand-text">
                         {i + 1}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                           <p className="truncate font-medium text-brand-text">{row.item_name}</p>
-                          <p className="shrink-0 font-mono text-sm text-brand-text/70 tabular-nums">
+                          <p className="shrink-0 font-display text-lg font-normal tabular-nums tracking-wide text-brand-text/70">
                             {row.units} sold
                           </p>
                         </div>
                         <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-brand-text/10">
                           <div
-                            className="h-full rounded-full bg-brand-yellow/90"
+                            className="h-full rounded-full bg-brand-yellow"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -461,7 +459,7 @@ function KpiTile({
     <Card className={`min-w-[132px] flex-1 p-4 md:min-w-0 ${className}`}>
       <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>{label}</p>
       <p
-        className={`font-narrow mt-2 text-[1.45rem] font-bold tabular-nums leading-none tracking-tight md:text-[1.65rem] ${valueClassName}`}
+        className={`font-display mt-2 text-[1.65rem] font-normal tabular-nums leading-none tracking-wide md:text-[1.85rem] ${valueClassName}`}
       >
         {value}
       </p>
@@ -475,14 +473,14 @@ function ReadinessRow({ ok, label, href }: { ok: boolean; label: string; href: s
     <li className="flex items-start gap-2">
       {ok ? (
         <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-semantic-success/15 text-xs font-bold text-semantic-success"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-green/18 text-xs font-bold text-brand-green"
           aria-label="OK"
         >
           ✓
         </span>
       ) : (
         <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-semantic-warning/20 text-xs font-bold text-semantic-warning"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-yellow-soft text-xs font-bold text-brand-text"
           aria-label="Needs attention"
         >
           !

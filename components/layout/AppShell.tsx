@@ -57,13 +57,13 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-2.5 rounded-md py-2 pl-2 pr-2 text-sm font-medium transition ${
+      className={`flex items-center gap-2.5 rounded-ref-sm py-2 pl-2.5 pr-2 text-[14px] font-medium transition ${
         active
-          ? "border-l-2 border-brand-red bg-brand-red/[0.08] text-brand-red"
-          : "border-l-2 border-transparent text-brand-text/75 hover:bg-brand-bg hover:text-brand-text"
+          ? "bg-brand-red text-white shadow-sm"
+          : "text-brand-text/80 hover:bg-brand-fill hover:text-brand-text"
       }`}
     >
-      <span className="text-base leading-none" aria-hidden>
+      <span className={`text-base leading-none ${active ? "text-brand-yellow" : ""}`} aria-hidden>
         {item.icon}
       </span>
       <span>{item.label}</span>
@@ -73,10 +73,10 @@ function NavLink({
 
 function SidebarNav({ pathname, onNavigate }: { pathname: string | null; onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-0 px-1.5 py-3">
+    <nav className="flex flex-col gap-0 px-2 py-3">
       {navGroups.map((group, gi) => (
-        <div key={group.title} className={gi > 0 ? "mt-4 border-t border-brand-text/10 pt-4" : ""}>
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-text/38">
+        <div key={group.title} className={gi > 0 ? "mt-3 border-t border-brand-text/10 pt-3" : ""}>
+          <p className="mb-1.5 px-2 text-label font-bold uppercase tracking-[0.14em] text-brand-text/40">
             {group.title}
           </p>
           <div className="flex flex-col gap-0.5">
@@ -98,12 +98,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <aside
-        className={`hidden w-56 shrink-0 flex-col border-r border-brand-text/10 bg-white md:flex ${
+        className={`hidden w-[260px] shrink-0 flex-col border-r border-brand-text/10 bg-white shadow-card md:flex ${
           kiosk ? "!hidden" : ""
         }`}
       >
-        <div className="flex h-14 shrink-0 items-center border-b border-brand-text/10 px-4">
-          <span className="font-narrow text-[18px] font-bold uppercase tracking-wide text-brand-text">
+        <div className="flex min-h-[60px] shrink-0 items-center border-b border-brand-text/10 px-5 py-3">
+          <span className="font-display text-[28px] font-normal uppercase leading-none tracking-[0.12em] text-brand-yellow">
             WRAPZ
           </span>
         </div>
@@ -114,16 +114,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header
-          className={`flex h-14 shrink-0 items-center justify-between border-b border-brand-text/10 bg-white px-4 md:hidden ${
+          className={`flex h-[60px] shrink-0 items-center justify-between border-b border-brand-text/10 bg-white px-4 shadow-card md:hidden ${
             kiosk ? "hidden" : ""
           }`}
         >
-          <span className="font-narrow text-[18px] font-bold uppercase tracking-wide text-brand-text">
+          <span className="font-display text-[26px] font-normal uppercase leading-none tracking-[0.1em] text-brand-yellow">
             WRAPZ
           </span>
           <button
             type="button"
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-brand-text/12 bg-white text-lg text-brand-text shadow-sm transition hover:bg-brand-bg active:scale-[0.98]"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-ref-sm border border-brand-text/12 bg-white text-lg text-brand-text shadow-card transition hover:bg-brand-fill active:scale-[0.98]"
             aria-expanded={mobileNavOpen}
             aria-controls="app-mobile-nav"
             aria-label="Open navigation menu"
@@ -137,21 +137,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           <>
             <button
               type="button"
-              className="fixed inset-0 z-40 bg-brand-text/25 backdrop-blur-[1px] md:hidden"
+              className="fixed inset-0 z-40 bg-brand-text/30 backdrop-blur-[1px] md:hidden"
               aria-label="Close menu"
               onClick={() => setMobileNavOpen(false)}
             />
             <aside
               id="app-mobile-nav"
-              className="fixed left-0 top-0 z-50 flex h-full w-[min(100%,300px)] flex-col border-r border-brand-text/10 bg-white shadow-2xl md:hidden"
+              className="fixed left-0 top-0 z-50 flex h-full w-[min(100%,280px)] flex-col border-r border-brand-text/10 bg-white shadow-lift md:hidden"
             >
-              <div className="flex h-14 shrink-0 items-center justify-between border-b border-brand-text/10 px-3">
-                <span className="font-narrow text-[18px] font-bold uppercase tracking-wide text-brand-text">
-            WRAPZ
-          </span>
+              <div className="flex min-h-[56px] shrink-0 items-center justify-between border-b border-brand-text/10 px-3">
+                <span className="font-display text-[26px] font-normal uppercase leading-none tracking-[0.1em] text-brand-yellow">
+                  WRAPZ
+                </span>
                 <button
                   type="button"
-                  className="rounded-md px-3 py-2 text-sm font-semibold text-brand-text/60 transition hover:bg-brand-bg hover:text-brand-text"
+                  className="rounded-ref-sm px-3 py-2 text-sm font-semibold text-brand-text/55 transition hover:bg-brand-fill hover:text-brand-text"
                   aria-label="Close navigation"
                   onClick={() => setMobileNavOpen(false)}
                 >
@@ -166,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
 
         <main
-          className={`flex-1 bg-brand-bg ${kiosk ? "min-h-0 flex-1 p-0 md:p-0" : "p-4 md:p-6"}`}
+          className={`flex-1 bg-brand-bg ${kiosk ? "min-h-0 flex-1 p-0 md:p-0" : "p-4 md:p-7"}`}
         >
           {children}
         </main>

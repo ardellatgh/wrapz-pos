@@ -39,15 +39,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto rounded-lg border px-4 py-3 text-sm shadow-lg ${
+            className={`pointer-events-auto rounded-ref border px-4 py-3 text-sm shadow-card ${
               t.kind === "success"
-                ? "border-semantic-success/30 bg-white text-brand-text"
-                : "border-brand-red/30 bg-white text-brand-red"
+                ? "border-brand-green/35 bg-white text-brand-text"
+                : "border-brand-red/35 bg-brand-red-soft text-brand-red"
             }`}
             role="status"
           >
             {t.kind === "success" && (
-              <span className="mr-2 font-medium text-semantic-success">Saved</span>
+              <span className="mr-2 font-medium text-brand-green">Saved</span>
             )}
             {t.message}
           </div>

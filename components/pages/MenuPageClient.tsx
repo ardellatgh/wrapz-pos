@@ -316,26 +316,31 @@ export function MenuPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Menu database" description="Menu items and bundles for the event catalog." />
+        <PageHeader
+          eyebrow="Catalog"
+          title="Menu database"
+          description="Menu items and bundles for the event catalog."
+        />
         <SupabaseSetupBanner />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
+        eyebrow="Catalog"
         title="Menu database"
         description={
           <>
             Menu items and bundles. Images use Supabase Storage bucket{" "}
-            <code className="rounded bg-white px-1 font-mono text-xs">{BUCKET}</code>.
+            <code className="rounded bg-white px-1 font-sans tabular-nums text-xs">{BUCKET}</code>.
           </>
         }
         actions={<Button onClick={openCreate}>Add menu item</Button>}
       />
 
-      <div className="mt-4 flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {(
           [
             ["all", "All"],
@@ -399,7 +404,7 @@ export function MenuPageClient() {
                     )}
                   </Td>
                   <Td className="font-medium">{r.name}</Td>
-                  <Td className="font-mono text-xs">{formatRupiah(r.price)}</Td>
+                  <Td className="font-sans tabular-nums text-xs">{formatRupiah(r.price)}</Td>
                   <Td>
                     {r.is_bundle ? (
                       <span className="flex flex-wrap items-center gap-1">
@@ -412,7 +417,7 @@ export function MenuPageClient() {
                       <Badge tone="muted">Item</Badge>
                     )}
                   </Td>
-                  <Td className="font-mono text-xs">
+                  <Td className="font-sans tabular-nums text-xs">
                     {r.low_stock_threshold ?? "—"}
                   </Td>
                   <Td>
@@ -487,7 +492,7 @@ export function MenuPageClient() {
               onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
             />
             <p className="mt-1 text-xs text-brand-text/55">
-              Uploads to <span className="font-mono">{BUCKET}</span> after the row is saved (new or
+              Uploads to <span className="font-sans tabular-nums">{BUCKET}</span> after the row is saved (new or
               existing).
             </p>
           </div>

@@ -74,9 +74,9 @@ function summarizeMovements(movements: CashMovement[]) {
 }
 
 function varianceClass(variance: number): string {
-  if (variance === 0) return "text-semantic-success font-semibold";
-  if (variance < 0) return "text-red-600 font-semibold";
-  return "text-amber-700 font-semibold";
+  if (variance === 0) return "text-brand-green font-semibold";
+  if (variance < 0) return "text-brand-red font-semibold";
+  return "text-amber-900 font-semibold";
 }
 
 export function CashPageClient() {
@@ -331,6 +331,7 @@ export function CashPageClient() {
     return (
       <div className="mx-auto max-w-xl space-y-6">
         <PageHeader
+          eyebrow="Drawer"
           title="Cash control"
           description={
             <>
@@ -347,6 +348,7 @@ export function CashPageClient() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <PageHeader
+        eyebrow="Drawer"
         title="Cash control"
         description={
           <>
@@ -378,35 +380,35 @@ export function CashPageClient() {
             <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">
               Active session
             </p>
-            <p className="mt-1 font-mono text-sm text-brand-text/70">
+            <p className="mt-1 font-sans tabular-nums text-sm text-brand-text/70">
               Opened {formatJakartaDateTime(openSession.opened_at)}
             </p>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
                 <dt>Opening float</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.openingFloat)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.openingFloat)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Total refills</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.refills)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.refills)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Cash sales received</dt>
-                <dd className="font-mono tabular-nums text-brand-text/70">
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text/70">
                   {formatRupiah(activeSummary.cashSales)}
                   <span className="ml-1 text-xs">(Stage 3)</span>
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Cash refunds paid</dt>
-                <dd className="font-mono tabular-nums text-brand-text/70">
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text/70">
                   {formatRupiah(activeSummary.cashRefunds)}
                   <span className="ml-1 text-xs">(Stage 3)</span>
                 </dd>
               </div>
               <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 text-base font-semibold">
                 <dt>Expected closing cash</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.expected)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.expected)}</dd>
               </div>
             </dl>
             <div className="mt-4">
@@ -428,7 +430,7 @@ export function CashPageClient() {
                 <Input
                   id="refill-amt"
                   inputMode="numeric"
-                  className="mt-1 font-mono"
+                  className="mt-1 font-sans tabular-nums"
                   value={refillAmount}
                   onChange={(e) => setRefillAmount(e.target.value)}
                   placeholder="e.g. 500000"
@@ -466,11 +468,13 @@ export function CashPageClient() {
                 <tbody>
                   {movements.map((m) => (
                     <tr key={m.id}>
-                      <Td className="whitespace-nowrap font-mono text-xs text-brand-text/80">
+                      <Td className="whitespace-nowrap font-sans tabular-nums text-xs text-brand-text/80">
                         {formatJakartaDateTime(m.created_at)}
                       </Td>
                       <Td className="capitalize">{m.movement_type.replace(/_/g, " ")}</Td>
-                      <Td className="text-right font-mono tabular-nums">{formatRupiah(m.amount)}</Td>
+                      <Td className="text-right font-display text-base font-normal tabular-nums tracking-wide">
+                        {formatRupiah(m.amount)}
+                      </Td>
                       <Td className="text-brand-text/70">{m.notes ?? "—"}</Td>
                     </tr>
                   ))}
@@ -487,36 +491,36 @@ export function CashPageClient() {
                 Last closed session
               </p>
               {closedSummary.closedAt && (
-                <p className="mt-1 font-mono text-sm text-brand-text/70">
+                <p className="mt-1 font-sans tabular-nums text-sm text-brand-text/70">
                   Closed {formatJakartaDateTime(closedSummary.closedAt)}
                 </p>
               )}
               <dl className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt>Opening float</dt>
-                  <dd className="font-mono tabular-nums">{formatRupiah(closedSummary.openingFloat)}</dd>
+                  <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(closedSummary.openingFloat)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt>Total refills</dt>
-                  <dd className="font-mono tabular-nums">{formatRupiah(closedSummary.refills)}</dd>
+                  <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(closedSummary.refills)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt>Cash sales / refunds</dt>
-                  <dd className="font-mono text-xs text-brand-text/70">
+                  <dd className="font-display text-sm font-normal tabular-nums tracking-wide text-brand-text/75">
                     {formatRupiah(closedSummary.cashSales)} / {formatRupiah(closedSummary.cashRefunds)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt>Expected closing</dt>
-                  <dd className="font-mono tabular-nums">{formatRupiah(closedSummary.expected)}</dd>
+                  <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(closedSummary.expected)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt>Counted cash</dt>
-                  <dd className="font-mono tabular-nums">{formatRupiah(closedSummary.actual)}</dd>
+                  <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(closedSummary.actual)}</dd>
                 </div>
                 <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2">
                   <dt>Variance</dt>
-                  <dd className={`font-mono tabular-nums ${varianceClass(closedSummary.variance)}`}>
+                  <dd className={`font-display text-lg font-normal tabular-nums tracking-wide ${varianceClass(closedSummary.variance)}`}>
                     {formatRupiah(closedSummary.variance)}
                   </dd>
                 </div>
@@ -535,7 +539,7 @@ export function CashPageClient() {
                 <Input
                   id="open-amt"
                   inputMode="numeric"
-                  className="mt-1 font-mono"
+                  className="mt-1 font-sans tabular-nums"
                   value={openFormAmount}
                   onChange={(e) => setOpenFormAmount(e.target.value)}
                   placeholder="e.g. 1000000"
@@ -573,23 +577,23 @@ export function CashPageClient() {
             <dl className="space-y-2 rounded-lg bg-brand-bg/80 p-3">
               <div className="flex justify-between gap-4">
                 <dt>Opening float</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.openingFloat)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.openingFloat)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Total refills</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.refills)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.refills)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Cash sales</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.cashSales)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.cashSales)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Cash refunds</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.cashRefunds)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.cashRefunds)}</dd>
               </div>
               <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-semibold">
                 <dt>Expected closing cash</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.expected)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.expected)}</dd>
               </div>
             </dl>
             <div>
@@ -597,14 +601,14 @@ export function CashPageClient() {
               <Input
                 id="counted"
                 inputMode="numeric"
-                className="mt-1 font-mono"
+                className="mt-1 font-sans tabular-nums"
                 value={countedInput}
                 onChange={(e) => setCountedInput(e.target.value)}
               />
             </div>
             <p className="text-sm">
               Variance preview (counted − expected):{" "}
-              <span className={`font-mono tabular-nums ${varianceClass(closePreviewVariance)}`}>
+              <span className={`font-display text-xl font-normal tabular-nums tracking-wide ${varianceClass(closePreviewVariance)}`}>
                 {formatRupiah(closePreviewVariance)}
               </span>
             </p>
@@ -639,15 +643,15 @@ export function CashPageClient() {
             <dl className="space-y-2 rounded-lg border border-brand-text/15 bg-brand-bg/80 p-3">
               <div className="flex justify-between gap-4">
                 <dt>Expected closing cash</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(activeSummary.expected)}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(activeSummary.expected)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Counted cash</dt>
-                <dd className="font-mono tabular-nums">{formatRupiah(parseRupiahInput(countedInput))}</dd>
+                <dd className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(parseRupiahInput(countedInput))}</dd>
               </div>
               <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-semibold">
                 <dt>Variance</dt>
-                <dd className={`font-mono tabular-nums ${varianceClass(closePreviewVariance)}`}>
+                <dd className={`font-display text-xl font-normal tabular-nums tracking-wide ${varianceClass(closePreviewVariance)}`}>
                   {formatRupiah(closePreviewVariance)}
                 </dd>
               </div>

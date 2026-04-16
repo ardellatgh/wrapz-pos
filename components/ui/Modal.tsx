@@ -39,14 +39,14 @@ export function Modal({ open, title, children, onClose, size = "default" }: Moda
         onClick={onClose}
       />
       <div
-        className={`relative z-10 w-full rounded-xl border border-brand-text/10 bg-white p-5 shadow-lg ${
+        className={`relative z-10 w-full rounded-ref border border-brand-text/10 bg-white p-5 shadow-lift ${
           size === "wide" ? "max-w-4xl" : "max-w-lg"
         }`}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2
             id="modal-title"
-            className="font-sans text-xl font-bold tracking-tight text-brand-text"
+            className="font-display text-2xl font-normal uppercase tracking-wide text-brand-yellow"
           >
             {title}
           </h2>

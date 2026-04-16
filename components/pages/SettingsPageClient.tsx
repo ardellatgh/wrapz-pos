@@ -107,6 +107,7 @@ export function SettingsPageClient() {
     return (
       <div className="mx-auto max-w-xl space-y-6">
         <PageHeader
+          eyebrow="Event"
           title="Event settings"
           description="Singleton configuration for the event (Asia/Jakarta). Requires an internet connection to Supabase."
         />
@@ -118,6 +119,7 @@ export function SettingsPageClient() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <PageHeader
+        eyebrow="Event"
         title="Event settings"
         description="Singleton configuration for the wisuda stall (Asia/Jakarta). Requires an internet connection to Supabase."
       />

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { formatQueueDisplay, formatRupiah } from "@/lib/format";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -104,16 +105,30 @@ export function OrderConfirmationPageClient() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-8 text-center">
-      <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-brand-text/50">Queue</p>
-        <p className="mt-2 font-mono text-7xl font-semibold text-brand-red md:text-8xl">
-          {formatQueueDisplay(order.queue_number)}
-        </p>
-        {order.customer_name && (
-          <p className="mt-4 text-lg text-brand-text">{order.customer_name}</p>
-        )}
-      </div>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHeader
+        eyebrow="Queue"
+        title={formatQueueDisplay(order.queue_number)}
+        titleClassName="font-display text-5xl font-normal normal-case tabular-nums tracking-wide text-brand-red md:text-6xl leading-none"
+        description={
+          order.customer_name ? <p className="text-lg text-brand-text">{order.customer_name}</p> : undefined
+        }
+        actions={
+          <div className="flex w-full flex-col gap-2 sm:w-auto">
+            <Button type="button" className="w-full sm:w-auto" onClick={() => router.push("/order/new")}>
+              Add new order
+            </Button>
+            <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => router.push("/dashboard")}>
+              Done
+            </Button>
+            <Link href="/transactions" className="w-full sm:w-auto">
+              <Button type="button" variant="ghost" className="w-full">
+                View transactions
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
       <Card className="p-4 text-left">
         <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Items</h2>
@@ -123,29 +138,19 @@ export function OrderConfirmationPageClient() {
               <span>
                 {l.item_name} × {l.quantity}
               </span>
-              <span className="shrink-0 font-mono">{formatRupiah(l.line_total)}</span>
+              <span className="shrink-0 font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+                {formatRupiah(l.line_total)}
+              </span>
             </li>
           ))}
         </ul>
         <div className="mt-4 flex justify-between border-t border-brand-text/10 pt-3 text-base font-semibold">
           <span>Total paid</span>
-          <span className="font-mono">{formatRupiah(order.total_amount)}</span>
+          <span className="font-display text-2xl font-normal tabular-nums tracking-wide text-brand-red">
+            {formatRupiah(order.total_amount)}
+          </span>
         </div>
       </Card>
-
-      <div className="flex flex-col gap-3">
-        <Button type="button" className="w-full" onClick={() => router.push("/order/new")}>
-          Add new order
-        </Button>
-        <Button type="button" variant="secondary" className="w-full" onClick={() => router.push("/dashboard")}>
-          Done
-        </Button>
-        <Link href="/transactions" className="w-full">
-          <Button type="button" variant="ghost" className="w-full">
-            View transactions
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }

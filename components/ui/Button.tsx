@@ -4,11 +4,11 @@ type Variant = "primary" | "secondary" | "ghost";
 
 const variants: Record<Variant, string> = {
   primary:
-    "min-h-[44px] rounded-md py-2.5 bg-brand-red text-white shadow-sm hover:bg-brand-red/92 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:ring-offset-2",
+    "min-h-10 rounded-ref-sm bg-brand-red px-4 py-2 text-button text-white shadow-card hover:bg-brand-red/92 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-brand-red/45 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg",
   secondary:
-    "rounded-md py-2 border border-brand-text/15 bg-white text-brand-text shadow-sm hover:border-brand-text/25 hover:bg-brand-bg focus-visible:ring-2 focus-visible:ring-brand-red/30 focus-visible:ring-offset-2",
+    "min-h-10 rounded-ref-sm border border-brand-text/12 bg-white px-4 py-2 text-button text-brand-text shadow-card hover:border-brand-text/20 hover:bg-brand-fill focus-visible:ring-2 focus-visible:ring-brand-yellow/35 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg",
   ghost:
-    "rounded-md py-2 text-brand-text hover:bg-brand-text/[0.06] focus-visible:ring-2 focus-visible:ring-brand-red/25 focus-visible:ring-offset-2",
+    "min-h-10 rounded-ref-sm px-4 py-2 text-button text-brand-text hover:bg-brand-text/[0.06] focus-visible:ring-2 focus-visible:ring-brand-yellow/30 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-bg",
 };
 
 export function Button({
@@ -22,7 +22,7 @@ export function Button({
     <button
       type={type}
       disabled={disabled}
-      className={`inline-flex items-center justify-center rounded-md px-4 text-sm font-semibold tracking-tight transition disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center font-semibold tracking-tight transition disabled:opacity-45 disabled:pointer-events-none disabled:active:scale-100 ${variants[variant]} ${className}`}
       {...props}
     />
   );

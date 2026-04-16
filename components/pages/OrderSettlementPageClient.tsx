@@ -405,7 +405,11 @@ export function OrderSettlementPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-xl space-y-6">
-        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
+        <PageHeader
+          eyebrow="Checkout"
+          title="Settlement"
+          description="Confirm change, refunds, and serving handoff for this order."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -414,7 +418,11 @@ export function OrderSettlementPageClient() {
   if (loading) {
     return (
       <div className="mx-auto max-w-xl space-y-4">
-        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
+        <PageHeader
+          eyebrow="Checkout"
+          title="Settlement"
+          description="Confirm change, refunds, and serving handoff for this order."
+        />
         <p className="text-sm text-brand-text/60">Loading…</p>
       </div>
     );
@@ -423,7 +431,11 @@ export function OrderSettlementPageClient() {
   if (loadError || !order || !payment || !totals) {
     return (
       <div className="mx-auto max-w-xl space-y-4">
-        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
+        <PageHeader
+          eyebrow="Checkout"
+          title="Settlement"
+          description="Confirm change, refunds, and serving handoff for this order."
+        />
         <Card className="p-4 text-sm text-red-800">{loadError ?? "Loading…"}</Card>
       </div>
     );
@@ -435,30 +447,40 @@ export function OrderSettlementPageClient() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
-        <p className="mt-2 font-narrow text-3xl font-bold tabular-nums tracking-tight text-brand-red">
-          #{formatQueueDisplay(order.queue_number)}
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Checkout"
+        title="Settlement"
+        extra={
+          <p className="font-display text-4xl font-normal tabular-nums tracking-wide text-brand-red md:text-5xl">
+            #{formatQueueDisplay(order.queue_number)}
+          </p>
+        }
+        description="Confirm change, refunds, and serving handoff for this order."
+      />
 
       <Card className="space-y-2 p-4 text-sm">
         <div className="flex justify-between">
           <span>Order total</span>
-          <span className="font-mono font-semibold">{formatRupiah(total)}</span>
+          <span className="font-display text-xl font-normal tabular-nums tracking-wide text-brand-text">
+            {formatRupiah(total)}
+          </span>
         </div>
         <div className="flex justify-between text-brand-text/80">
           <span>Net received after refunds</span>
-          <span className="font-mono">{formatRupiah(net)}</span>
+          <span className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+            {formatRupiah(net)}
+          </span>
         </div>
         {remainingUnder > 0 && (
-          <div className="rounded-md bg-brand-yellow/25 px-3 py-2 font-medium text-brand-text">
-            Remaining due: {formatRupiah(remainingUnder)}
+          <div className="rounded-ref-sm bg-brand-yellow-soft px-3 py-2 text-sm font-medium text-brand-text ring-1 ring-brand-yellow/30">
+            Remaining due:{" "}
+            <span className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(remainingUnder)}</span>
           </div>
         )}
         {changeOver > 0 && (
-          <div className="rounded-md bg-brand-yellow/25 px-3 py-2 font-medium text-brand-text">
-            Change to return: {formatRupiah(changeOver)}
+          <div className="rounded-ref-sm bg-brand-yellow-soft px-3 py-2 text-sm font-medium text-brand-text ring-1 ring-brand-yellow/30">
+            Change to return:{" "}
+            <span className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(changeOver)}</span>
           </div>
         )}
       </Card>
@@ -548,7 +570,7 @@ export function OrderSettlementPageClient() {
             <Input
               id="sa"
               inputMode="numeric"
-              className="mt-1 font-mono"
+              className="mt-1 font-sans tabular-nums"
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
             />

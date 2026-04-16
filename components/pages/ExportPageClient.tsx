@@ -100,6 +100,7 @@ export function ExportPageClient() {
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <PageHeader
+          eyebrow="Data"
           title="Backup & export"
           description="Export event data as TSV files in a ZIP (built in the browser). Requires a live connection to Supabase."
         />
@@ -111,13 +112,14 @@ export function ExportPageClient() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
+        eyebrow="Data"
         title="Backup & export"
         description="Export a full backup of all event data as TSV files in a ZIP archive (built in the browser). If any table fails to load, no ZIP is downloaded. Requires a live connection to Supabase."
       />
 
       <Card className="p-4">
         <h2 className="text-sm font-semibold text-brand-text">Included tables</h2>
-        <ul className="mt-2 list-inside list-disc space-y-0.5 font-mono text-xs text-brand-text/75">
+        <ul className="mt-2 list-inside list-disc space-y-0.5 font-sans tabular-nums text-xs text-brand-text/75">
           {EXPORT_TABLES.map((t) => (
             <li key={t}>{t}.tsv</li>
           ))}
@@ -134,12 +136,12 @@ export function ExportPageClient() {
       )}
 
       {lastOkAt != null && lastFilename != null && (
-        <Card className="border-semantic-success/30 bg-semantic-success/5 p-4 text-sm">
-          <p className="font-medium text-semantic-success">Last successful export (this browser session)</p>
+        <Card className="border-brand-green/30 bg-brand-green/5 p-4 text-sm">
+          <p className="font-medium text-brand-green">Last successful export (this browser session)</p>
           <p className="mt-1 text-brand-text/80">
             <span className="text-brand-text/60">Time (WIB):</span> {formatDateTime(new Date(lastOkAt))}
           </p>
-          <p className="mt-0.5 font-mono text-xs text-brand-text/85 break-all">
+          <p className="mt-0.5 font-sans tabular-nums text-xs text-brand-text/85 break-all">
             <span className="font-sans text-brand-text/60">File:</span> {lastFilename}
           </p>
         </Card>
@@ -170,8 +172,8 @@ export function ExportPageClient() {
         )}
 
         {purgeSucceeded && (
-          <div className="mt-4 rounded-lg border border-semantic-success/40 bg-white p-4 text-sm text-brand-text">
-            <p className="font-semibold text-semantic-success">Purge completed</p>
+          <div className="mt-4 rounded-lg border border-brand-green/40 bg-white p-4 text-sm text-brand-text">
+            <p className="font-semibold text-brand-green">Purge completed</p>
             <p className="mt-1 text-brand-text/80">
               Data was removed from the database. Refresh navigation if any screen still shows old values.
             </p>
@@ -273,11 +275,11 @@ export function ExportPageClient() {
 
           <div>
             <Label htmlFor="purge_phrase">
-              Type <span className="font-mono text-brand-text">{PURGE_CONFIRM_PHRASE}</span> to enable purge
+              Type <span className="font-sans tabular-nums text-brand-text">{PURGE_CONFIRM_PHRASE}</span> to enable purge
             </Label>
             <Input
               id="purge_phrase"
-              className="mt-1 font-mono"
+              className="mt-1 font-sans tabular-nums"
               value={purgePhrase}
               onChange={(e) => setPurgePhrase(e.target.value)}
               autoComplete="off"

@@ -165,15 +165,16 @@ export function DiscountsPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Discount presets" description="Preset discounts for the cashier." />
+        <PageHeader eyebrow="Pricing" title="Discount presets" description="Preset discounts for the cashier." />
         <SupabaseSetupBanner />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
+        eyebrow="Pricing"
         title="Discount presets"
         description="Preset discounts for the cashier (Stage 3)."
         actions={<Button onClick={openCreate}>Add preset</Button>}
@@ -188,7 +189,7 @@ export function DiscountsPageClient() {
         </Card>
       )}
 
-      <Card className="mt-6 p-0 overflow-hidden">
+      <Card className="overflow-hidden p-0">
         {loading ? (
           <div className="space-y-3 p-4">
             {[1, 2, 3].map((i) => (
@@ -216,10 +217,10 @@ export function DiscountsPageClient() {
                 <tr key={r.id}>
                   <Td className="font-medium">{r.name}</Td>
                   <Td className="capitalize">{r.discount_type}</Td>
-                  <Td className="font-mono text-xs">
+                  <Td className="font-sans tabular-nums text-xs">
                     {formatDiscountValue(r.discount_type, r.value)}
                   </Td>
-                  <Td className="font-mono text-xs">
+                  <Td className="font-sans tabular-nums text-xs">
                     {r.min_purchase != null ? formatRupiah(r.min_purchase) : "—"}
                   </Td>
                   <Td>

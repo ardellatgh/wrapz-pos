@@ -301,7 +301,11 @@ export function LedgerPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <PageHeader title="Ledger" description="Operational money log · Newest first · WIB (Asia/Jakarta)" />
+        <PageHeader
+          eyebrow="Money"
+          title="Ledger"
+          description="Operational money log · Newest first · WIB (Asia/Jakarta)"
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -310,6 +314,7 @@ export function LedgerPageClient() {
   return (
     <div className="mx-auto max-w-[1100px] space-y-6">
       <PageHeader
+        eyebrow="Money"
         title="Ledger"
         description="Operational money log · Newest first · WIB (Asia/Jakarta)"
         actions={
@@ -320,7 +325,7 @@ export function LedgerPageClient() {
       />
       <p className="-mt-2 max-w-2xl text-xs leading-relaxed text-brand-text/55">
         <span className="font-semibold text-brand-text/70">Channel</span> groups customer and physical cash flows.
-        Adjustments and generic <span className="font-mono">refund</span> rows use the latest settlement method on
+        Adjustments and generic <span className="font-sans tabular-nums">refund</span> rows use the latest settlement method on
         the same order before the ledger time, otherwise the initial payment method. If that cannot be resolved, the
         channel shows &quot;—&quot; and the row only appears under All only.
       </p>
@@ -328,7 +333,7 @@ export function LedgerPageClient() {
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-brand-text">
           Showing:{" "}
-          <span className="font-mono text-brand-red">{filterShowingLabel(channelFilter)}</span>
+          <span className="font-sans tabular-nums text-brand-red">{filterShowingLabel(channelFilter)}</span>
         </p>
         <div className="flex flex-wrap gap-2">
           {FILTER_OPTIONS.map(({ key, label }) => (
@@ -355,7 +360,7 @@ export function LedgerPageClient() {
             <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">
               Cash received
             </p>
-            <p className="mt-1 font-mono text-lg font-semibold text-semantic-success tabular-nums">
+            <p className="mt-1 font-display text-2xl font-normal text-brand-green tabular-nums tracking-wide">
               {formatRupiah(allFilterKpis.cashReceived)}
             </p>
             <p className="mt-1 text-xs text-brand-text/55">
@@ -368,8 +373,8 @@ export function LedgerPageClient() {
               QRIS receivable
             </p>
             <p
-              className={`mt-1 font-mono text-lg font-semibold tabular-nums ${
-                allFilterKpis.qrisReceivable >= 0 ? "text-semantic-success" : "text-red-700"
+              className={`mt-1 font-display text-2xl font-normal tabular-nums tracking-wide ${
+                allFilterKpis.qrisReceivable >= 0 ? "text-brand-green" : "text-brand-red"
               }`}
             >
               {formatRupiah(allFilterKpis.qrisReceivable)}
@@ -381,8 +386,8 @@ export function LedgerPageClient() {
               Transfer receivable
             </p>
             <p
-              className={`mt-1 font-mono text-lg font-semibold tabular-nums ${
-                allFilterKpis.transferReceivable >= 0 ? "text-semantic-success" : "text-red-700"
+              className={`mt-1 font-display text-2xl font-normal tabular-nums tracking-wide ${
+                allFilterKpis.transferReceivable >= 0 ? "text-brand-green" : "text-brand-red"
               }`}
             >
               {formatRupiah(allFilterKpis.transferReceivable)}
@@ -394,8 +399,8 @@ export function LedgerPageClient() {
               Cash in hand
             </p>
             <p
-              className={`mt-1 font-mono text-lg font-semibold tabular-nums ${
-                allFilterKpis.cashInHand >= 0 ? "text-semantic-success" : "text-red-700"
+              className={`mt-1 font-display text-2xl font-normal tabular-nums tracking-wide ${
+                allFilterKpis.cashInHand >= 0 ? "text-brand-green" : "text-brand-red"
               }`}
             >
               {formatRupiah(allFilterKpis.cashInHand)}
@@ -409,21 +414,21 @@ export function LedgerPageClient() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Card className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">In</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-semantic-success tabular-nums">
+            <p className="mt-1 font-display text-2xl font-normal text-brand-green tabular-nums tracking-wide">
               {formatRupiah(selectedChannelTotals.in)}
             </p>
           </Card>
           <Card className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Out</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-red-700 tabular-nums">
+            <p className="mt-1 font-display text-2xl font-normal text-brand-red tabular-nums tracking-wide">
               {formatRupiah(selectedChannelTotals.out)}
             </p>
           </Card>
           <Card className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Balance</p>
             <p
-              className={`mt-1 font-mono text-lg font-semibold tabular-nums ${
-                selectedChannelTotals.balance >= 0 ? "text-semantic-success" : "text-red-700"
+              className={`mt-1 font-display text-2xl font-normal tabular-nums tracking-wide ${
+                selectedChannelTotals.balance >= 0 ? "text-brand-green" : "text-brand-red"
               }`}
             >
               {formatRupiah(selectedChannelTotals.balance)}
@@ -477,7 +482,7 @@ export function LedgerPageClient() {
                     !showExpand || expanded ? note : `${note.slice(0, NOTE_PREVIEW)}…`;
                   return (
                     <tr key={r.id} className="hover:bg-brand-bg/40">
-                      <Td className="whitespace-nowrap font-mono text-xs text-brand-text/80">
+                      <Td className="whitespace-nowrap font-sans tabular-nums text-xs text-brand-text/80">
                         {formatDateTime(r.created_at)}
                       </Td>
                       <Td className="text-brand-text">{ledgerEntryTypeLabel(r.entry_type)}</Td>
@@ -493,12 +498,12 @@ export function LedgerPageClient() {
                           </span>
                         )}
                       </Td>
-                      <Td className="text-right font-mono text-sm font-medium tabular-nums">
+                      <Td className="text-right font-sans tabular-nums text-sm font-medium tabular-nums">
                         {formatRupiah(r.amount)}
                       </Td>
                       <Td>
                         {r.queue_number != null ? (
-                          <span className="inline-block rounded-md bg-brand-red/10 px-2 py-0.5 font-mono text-xs font-semibold text-brand-red">
+                          <span className="inline-block rounded-md bg-brand-red/10 px-2 py-0.5 font-sans tabular-nums text-xs font-semibold text-brand-red">
                             #{formatQueueNumber(r.queue_number)}
                           </span>
                         ) : (

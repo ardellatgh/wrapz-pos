@@ -3,15 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #faf9f6;
-  --color-primary: #b91c1c;
-  --color-accent: #c9a227;
-  --color-text: #1a1a1a;
-  --color-success: #2e7d32;
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --color-bg: #f5f5f5;
+  --color-primary: #d45046;
+  --color-accent: #e8c547;
+  --color-text: #2b2b2b;
+  --color-success: #60aa68;
+  --color-input-fill: #e9edf1;
+  --shadow-card: 0 3px 12px rgba(15, 23, 42, 0.08);
 }
 
 body {
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text);
 }

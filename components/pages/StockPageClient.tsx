@@ -228,6 +228,7 @@ export function StockPageClient() {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
+          eyebrow="Floor"
           title="Stock"
           description="Current stock is computed from movement history only (no manual overrides on menu rows)."
         />
@@ -239,6 +240,7 @@ export function StockPageClient() {
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <PageHeader
+        eyebrow="Floor"
         title="Stock"
         description="Current stock is computed from movement history only (no manual overrides on menu rows)."
       />
@@ -260,7 +262,7 @@ export function StockPageClient() {
       </div>
 
       <Card className="p-4">
-        <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text/80">
+        <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">
           Overview
         </h2>
         {loading ? (
@@ -289,15 +291,17 @@ export function StockPageClient() {
                   key={item.id}
                   className={
                     isOut
-                      ? "bg-semantic-danger/8 ring-1 ring-semantic-danger/10"
+                      ? "bg-brand-red-soft ring-1 ring-brand-red/25"
                       : isLow
-                        ? "bg-semantic-warning/10 ring-1 ring-semantic-warning/15"
-                        : undefined
+                        ? "bg-brand-yellow-soft ring-1 ring-brand-yellow/35"
+                        : "bg-brand-green/[0.06]"
                   }
                 >
                   <Td className="font-medium">{item.name}</Td>
-                  <Td className="text-right font-mono tabular-nums">{current}</Td>
-                  <Td className="text-right font-mono tabular-nums text-brand-text/80">
+                  <Td className="text-right font-display text-xl font-normal tabular-nums tracking-wide text-brand-text">
+                    {current}
+                  </Td>
+                  <Td className="text-right font-display text-base font-normal tabular-nums tracking-wide text-brand-text/75">
                     {item.low_stock_threshold != null ? item.low_stock_threshold : `(${defaultLowStock} default)`}
                   </Td>
                   <Td>
@@ -317,7 +321,7 @@ export function StockPageClient() {
       </Card>
 
       <Card className="p-4">
-        <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text/80">
+        <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">
           Movement log
         </h2>
         <p className="mt-1 text-xs text-brand-text/60">
@@ -341,12 +345,12 @@ export function StockPageClient() {
             <tbody>
               {logRows.map((r) => (
                 <tr key={r.id}>
-                  <Td className="whitespace-nowrap font-mono text-xs text-brand-text/80">
+                  <Td className="whitespace-nowrap font-sans tabular-nums text-xs text-brand-text/80">
                     {formatDateTime(r.created_at)}
                   </Td>
                   <Td>{r.menu_items?.name ?? "—"}</Td>
                   <Td className="capitalize">{r.movement_type}</Td>
-                  <Td className="text-right font-mono tabular-nums">
+                  <Td className="text-right font-sans tabular-nums">
                     {r.quantity_change > 0 ? `+${r.quantity_change}` : r.quantity_change}
                   </Td>
                   <Td className="text-brand-text/70">{r.notes ?? "—"}</Td>
@@ -442,7 +446,7 @@ function BulkStockTable({
           {items.map((item) => (
             <tr key={item.id}>
               <Td>{item.name}</Td>
-              <Td className="text-right font-mono tabular-nums text-brand-text/80">
+              <Td className="text-right font-sans tabular-nums text-brand-text/80">
                 {stockByItemId[item.id] ?? 0}
               </Td>
               <Td>
@@ -451,7 +455,7 @@ function BulkStockTable({
                   min={0}
                   step={1}
                   inputMode="numeric"
-                  className="font-mono"
+                  className="font-sans tabular-nums"
                   disabled={disabled}
                   value={bulkQty[item.id] ?? ""}
                   onChange={(e) =>

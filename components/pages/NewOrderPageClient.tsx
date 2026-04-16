@@ -464,6 +464,7 @@ export function NewOrderPageClient() {
     return (
       <div className="mx-auto max-w-xl space-y-6">
         <PageHeader
+          eyebrow="Service"
           title="New order"
           description="Tap items to build a cart. Queue number is assigned when you proceed to payment."
         />
@@ -479,6 +480,7 @@ export function NewOrderPageClient() {
     <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row">
       <div className="min-w-0 flex-1 space-y-4">
         <PageHeader
+          eyebrow="Service"
           title="New order"
           description="Tap + to add items. Queue number is assigned when you proceed to payment."
         />
@@ -521,7 +523,7 @@ export function NewOrderPageClient() {
                     {!item.is_bundle && (
                       <div className="absolute right-2 top-2">
                         {out ? (
-                          <Badge className="bg-red-100 text-red-800">Out</Badge>
+                          <Badge tone="danger">Out</Badge>
                         ) : low ? (
                           <Badge tone="warning">{stock} left</Badge>
                         ) : null}
@@ -529,7 +531,9 @@ export function NewOrderPageClient() {
                     )}
                   </div>
                   <p className="mt-2 text-sm font-semibold leading-snug text-brand-text">{item.name}</p>
-                  <p className="mt-0.5 font-mono text-xs text-brand-text/60">{formatRupiah(item.price)}</p>
+                  <p className="mt-0.5 font-display text-base font-normal tabular-nums tracking-wide text-brand-text/70">
+                    {formatRupiah(item.price)}
+                  </p>
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <Button
                       type="button"
@@ -540,7 +544,9 @@ export function NewOrderPageClient() {
                     >
                       −
                     </Button>
-                    <span className="min-w-[2ch] text-center font-mono text-sm">{q}</span>
+                    <span className="min-w-[2ch] text-center font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+                      {q}
+                    </span>
                     <Button type="button" className="px-2" onClick={() => addOne(item.id)}>
                       +
                     </Button>
@@ -554,7 +560,7 @@ export function NewOrderPageClient() {
 
       <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-96 lg:self-start">
         <Card className="space-y-4 p-4">
-          <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Cart</h2>
+          <h2 className="font-display text-xl font-normal uppercase tracking-wide text-brand-yellow">Cart</h2>
           {cartLines.length === 0 ? (
             <p className="text-sm text-brand-text/60">Cart is empty.</p>
           ) : (
@@ -571,7 +577,9 @@ export function NewOrderPageClient() {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="font-mono text-sm">{formatRupiah(l.item.price * l.quantity)}</span>
+                    <span className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+                      {formatRupiah(l.item.price * l.quantity)}
+                    </span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -638,7 +646,7 @@ export function NewOrderPageClient() {
             {discountMode === "preset" && (
               <div className="mt-2">
                 <select
-                  className="w-full rounded-lg border border-brand-text/20 bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-ref-sm border border-brand-text/12 bg-brand-fill px-3 py-2 text-sm text-brand-text"
                   value={presetId}
                   onChange={(e) => setPresetId(e.target.value)}
                 >
@@ -680,18 +688,21 @@ export function NewOrderPageClient() {
               </div>
             )}
             <p className="text-sm text-brand-text/80">
-              Discount: <span className="font-mono">{formatRupiah(discountAmount)}</span>
+              Discount:{" "}
+              <span className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+                {formatRupiah(discountAmount)}
+              </span>
             </p>
           </div>
 
           <div className="space-y-1 border-t border-brand-text/10 pt-3 text-sm">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span className="font-mono">{formatRupiah(subtotal)}</span>
+              <span className="font-sans tabular-nums">{formatRupiah(subtotal)}</span>
             </div>
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span className="font-mono">{formatRupiah(totalAmount)}</span>
+              <span className="font-sans tabular-nums">{formatRupiah(totalAmount)}</span>
             </div>
           </div>
 
@@ -735,7 +746,7 @@ export function NewOrderPageClient() {
                   <li key={i.id} className="rounded-lg border border-red-200/80 bg-red-50/50 p-3">
                     <p className="font-medium text-brand-text">{i.name}</p>
                     <p className="mt-1 text-xs text-brand-text/75">{i.detail}</p>
-                    <dl className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs text-brand-text/85">
+                    <dl className="mt-2 grid grid-cols-2 gap-1 font-sans tabular-nums text-xs text-brand-text/85">
                       <dt>Units required (cart)</dt>
                       <dd className="text-right tabular-nums">{i.orderedQty}</dd>
                       <dt>Recorded available</dt>
@@ -756,7 +767,7 @@ export function NewOrderPageClient() {
                   <li key={i.id} className="rounded-lg border border-brand-yellow/50 bg-brand-yellow/10 p-3">
                     <p className="font-medium text-brand-text">{i.name}</p>
                     <p className="mt-1 text-xs text-brand-text/75">{i.detail}</p>
-                    <dl className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs text-brand-text/85">
+                    <dl className="mt-2 grid grid-cols-2 gap-1 font-sans tabular-nums text-xs text-brand-text/85">
                       <dt>Units required (cart)</dt>
                       <dd className="text-right tabular-nums">{i.orderedQty}</dd>
                       <dt>Recorded available</dt>

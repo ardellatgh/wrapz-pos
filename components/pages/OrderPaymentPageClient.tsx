@@ -322,7 +322,11 @@ export function OrderPaymentPageClient() {
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-xl space-y-6">
-        <PageHeader title="Payment" description="Record tender and payment method for this order." />
+        <PageHeader
+          eyebrow="Checkout"
+          title="Payment"
+          description="Record tender and payment method for this order."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -331,7 +335,11 @@ export function OrderPaymentPageClient() {
   if (loading) {
     return (
       <div className="mx-auto max-w-xl space-y-4">
-        <PageHeader title="Payment" description="Record tender and payment method for this order." />
+        <PageHeader
+          eyebrow="Checkout"
+          title="Payment"
+          description="Record tender and payment method for this order."
+        />
         <p className="text-sm text-brand-text/60">Loading order…</p>
       </div>
     );
@@ -340,7 +348,11 @@ export function OrderPaymentPageClient() {
   if (loadError || !order) {
     return (
       <div className="mx-auto max-w-xl space-y-4">
-        <PageHeader title="Payment" description="Record tender and payment method for this order." />
+        <PageHeader
+          eyebrow="Checkout"
+          title="Payment"
+          description="Record tender and payment method for this order."
+        />
         <Card className="p-4 text-sm text-red-800">{loadError ?? "Order not found."}</Card>
       </div>
     );
@@ -350,15 +362,21 @@ export function OrderPaymentPageClient() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <PageHeader title="Payment" description="Record tender and payment method for this order." />
-        <p className="mt-2 font-narrow text-4xl font-bold tabular-nums tracking-tight text-brand-red">
-          #{formatQueueDisplay(order.queue_number)}
-        </p>
-        {order.customer_name && (
-          <p className="text-sm text-brand-text/70">{order.customer_name}</p>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Checkout"
+        title="Payment"
+        extra={
+          <>
+            <p className="font-display text-4xl font-normal tabular-nums tracking-wide text-brand-red md:text-5xl">
+              #{formatQueueDisplay(order.queue_number)}
+            </p>
+            {order.customer_name ? (
+              <p className="mt-1 text-sm text-brand-text/70">{order.customer_name}</p>
+            ) : null}
+          </>
+        }
+        description="Record tender and payment method for this order."
+      />
 
       <Card className="p-4">
         <Table>
@@ -373,8 +391,10 @@ export function OrderPaymentPageClient() {
             {lines.map((l, i) => (
               <tr key={i}>
                 <Td>{l.item_name}</Td>
-                <Td className="text-right font-mono">{l.quantity}</Td>
-                <Td className="text-right font-mono">{formatRupiah(l.line_total)}</Td>
+                <Td className="text-right font-display text-base font-normal tabular-nums tracking-wide">{l.quantity}</Td>
+                <Td className="text-right font-display text-base font-normal tabular-nums tracking-wide text-brand-text">
+                  {formatRupiah(l.line_total)}
+                </Td>
               </tr>
             ))}
           </tbody>
@@ -382,15 +402,17 @@ export function OrderPaymentPageClient() {
         <div className="mt-3 space-y-1 border-t border-brand-text/10 pt-3 text-sm">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span className="font-mono">{formatRupiah(order.subtotal)}</span>
+            <span className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(order.subtotal)}</span>
           </div>
           <div className="flex justify-between">
             <span>Discount</span>
-            <span className="font-mono">−{formatRupiah(order.discount_amount)}</span>
+            <span className="font-display text-lg font-normal tabular-nums tracking-wide">
+              −{formatRupiah(order.discount_amount)}
+            </span>
           </div>
           <div className="flex justify-between text-base font-semibold">
             <span>Total</span>
-            <span className="font-narrow text-lg font-bold tabular-nums tracking-tight text-brand-red">
+            <span className="font-display text-2xl font-normal tabular-nums tracking-wide text-brand-red">
               {formatRupiah(total)}
             </span>
           </div>
@@ -476,14 +498,14 @@ export function OrderPaymentPageClient() {
               {!exactSelected && (
                 <Input
                   inputMode="numeric"
-                  className="mt-2 font-mono"
+                  className="mt-2 font-sans tabular-nums"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
                   placeholder="Rp"
                 />
               )}
               {exactSelected && (
-                <p className="font-narrow text-xl font-bold tabular-nums tracking-tight text-brand-text">
+                <p className="font-display text-2xl font-normal tabular-nums tracking-wide text-brand-text">
                   {formatRupiah(total)}
                 </p>
               )}
