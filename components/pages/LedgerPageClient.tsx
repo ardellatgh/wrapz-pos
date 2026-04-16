@@ -5,6 +5,7 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Table, Td, Th } from "@/components/ui/Table";
 import { formatDateTime, formatQueueNumber, formatRupiah } from "@/lib/format";
 import { ledgerEntryTypeLabel } from "@/lib/ledgerLabels";
@@ -299,8 +300,8 @@ export function LedgerPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Ledger</h1>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHeader title="Ledger" description="Operational money log · Newest first · WIB (Asia/Jakarta)" />
         <SupabaseSetupBanner />
       </div>
     );
@@ -308,24 +309,21 @@ export function LedgerPageClient() {
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-brand-text">Ledger</h1>
-          <p className="mt-1 text-sm text-brand-text/70">
-            Operational money log · Newest first · WIB (Asia/Jakarta)
-          </p>
-          <p className="mt-1 max-w-2xl text-xs text-brand-text/55">
-            <span className="font-semibold">Channel</span> groups customer and physical cash flows.
-            Adjustments and generic <span className="font-mono">refund</span> rows use the latest
-            settlement method on the same order before the ledger time, otherwise the initial payment
-            method. If that cannot be resolved, the channel shows &quot;—&quot; and the row only
-            appears under All only.
-          </p>
-        </div>
-        <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Ledger"
+        description="Operational money log · Newest first · WIB (Asia/Jakarta)"
+        actions={
+          <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
+            Refresh
+          </Button>
+        }
+      />
+      <p className="-mt-2 max-w-2xl text-xs leading-relaxed text-brand-text/55">
+        <span className="font-semibold text-brand-text/70">Channel</span> groups customer and physical cash flows.
+        Adjustments and generic <span className="font-mono">refund</span> rows use the latest settlement method on
+        the same order before the ledger time, otherwise the initial payment method. If that cannot be resolved, the
+        channel shows &quot;—&quot; and the row only appears under All only.
+      </p>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-brand-text">
@@ -435,7 +433,11 @@ export function LedgerPageClient() {
       )}
 
       {loading ? (
-        <p className="text-sm text-brand-text/60">Loading…</p>
+        <div className="space-y-3 p-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+          ))}
+        </div>
       ) : rows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-brand-text/70">
           No ledger entries yet. Cash, stock, and order activity will appear here as the event runs.

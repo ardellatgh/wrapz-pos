@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -461,8 +462,11 @@ export function NewOrderPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">New order</h1>
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHeader
+          title="New order"
+          description="Tap items to build a cart. Queue number is assigned when you proceed to payment."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -474,19 +478,21 @@ export function NewOrderPageClient() {
     <>
     <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row">
       <div className="min-w-0 flex-1 space-y-4">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-brand-text">New order</h1>
-          <p className="mt-1 text-sm text-brand-text/70">
-            Tap + to add items. Queue number is assigned when you proceed to payment.
-          </p>
-        </div>
+        <PageHeader
+          title="New order"
+          description="Tap + to add items. Queue number is assigned when you proceed to payment."
+        />
         {loadError && (
           <Card className="border-red-200 bg-red-50/80 p-3 text-sm text-red-800">{loadError}</Card>
         )}
         {loading ? (
-          <p className="text-sm text-brand-text/60">Loading menu…</p>
+          <div className="space-y-3 p-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+            ))}
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
             {menu.map((item) => {
               const q = cartQty[item.id] ?? 0;
               const stock = item.is_bundle ? null : stockById[item.id] ?? 0;
@@ -495,8 +501,11 @@ export function NewOrderPageClient() {
               const low = !item.is_bundle && stock != null && stock > 0 && stock <= th;
               const out = !item.is_bundle && stock != null && stock <= 0;
               return (
-                <Card key={item.id} className="flex flex-col overflow-hidden p-0">
-                  <div className="relative aspect-[4/3] bg-brand-bg">
+                <li
+                  key={item.id}
+                  className="relative flex flex-col overflow-hidden rounded-xl border border-brand-text/10 bg-white p-3 transition hover:border-brand-red/30 hover:shadow-card"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl bg-brand-bg">
                     {item.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -519,37 +528,33 @@ export function NewOrderPageClient() {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2 p-3">
-                    <div className="font-medium leading-snug text-brand-text">{item.name}</div>
-                    <div className="text-sm font-mono text-brand-text/80">
-                      {formatRupiah(item.price)}
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="px-2"
-                        onClick={() => deltaQty(item.id, -1)}
-                        disabled={q === 0}
-                      >
-                        −
-                      </Button>
-                      <span className="min-w-[2ch] text-center font-mono text-sm">{q}</span>
-                      <Button type="button" className="px-2" onClick={() => addOne(item.id)}>
-                        +
-                      </Button>
-                    </div>
+                  <p className="mt-2 text-sm font-semibold leading-snug text-brand-text">{item.name}</p>
+                  <p className="mt-0.5 font-mono text-xs text-brand-text/60">{formatRupiah(item.price)}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="px-2"
+                      onClick={() => deltaQty(item.id, -1)}
+                      disabled={q === 0}
+                    >
+                      −
+                    </Button>
+                    <span className="min-w-[2ch] text-center font-mono text-sm">{q}</span>
+                    <Button type="button" className="px-2" onClick={() => addOne(item.id)}>
+                      +
+                    </Button>
                   </div>
-                </Card>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
 
       <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-96 lg:self-start">
         <Card className="space-y-4 p-4">
-          <h2 className="font-display text-lg font-semibold text-brand-text">Cart</h2>
+          <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Cart</h2>
           {cartLines.length === 0 ? (
             <p className="text-sm text-brand-text/60">Cart is empty.</p>
           ) : (
@@ -585,6 +590,8 @@ export function NewOrderPageClient() {
             </ul>
           )}
 
+          <hr className="border-brand-text/10" />
+
           <div>
             <Label htmlFor="cust">Customer name (optional)</Label>
             <Input
@@ -596,21 +603,31 @@ export function NewOrderPageClient() {
             />
           </div>
 
+          <hr className="border-brand-text/10" />
+
           <div className="space-y-2">
             <Label>Discount</Label>
-            <div className="flex flex-col gap-2 text-sm">
+            <div className="flex flex-wrap gap-1.5">
               {(
                 [
                   ["none", "None"],
                   ["preset", "Preset"],
-                  ["manual_percent", "Manual %"],
-                  ["manual_fixed", "Manual Rp"],
+                  ["manual_percent", "% Manual"],
+                  ["manual_fixed", "Rp Manual"],
                 ] as const
               ).map(([v, label]) => (
-                <label key={v} className="flex cursor-pointer items-center gap-2">
+                <label
+                  key={v}
+                  className={`cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition ${
+                    discountMode === v
+                      ? "border-brand-red bg-brand-red text-white"
+                      : "border-brand-text/20 bg-white text-brand-text hover:border-brand-red/40"
+                  }`}
+                >
                   <input
                     type="radio"
                     name="disc"
+                    className="sr-only"
                     checked={discountMode === v}
                     onChange={() => setDiscountMode(v)}
                   />
@@ -680,7 +697,7 @@ export function NewOrderPageClient() {
 
           <Button
             type="button"
-            className="w-full"
+            className="w-full min-h-[48px] text-base"
             disabled={cartLines.length === 0 || saving || stockModalOpen}
             onClick={() => void onProceed()}
           >

@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -403,8 +404,8 @@ export function OrderSettlementPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Settlement</h1>
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
         <SupabaseSetupBanner />
       </div>
     );
@@ -412,18 +413,18 @@ export function OrderSettlementPageClient() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Settlement</h1>
-        <p className="mt-4 text-sm text-brand-text/60">Loading…</p>
+      <div className="mx-auto max-w-xl space-y-4">
+        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
+        <p className="text-sm text-brand-text/60">Loading…</p>
       </div>
     );
   }
 
   if (loadError || !order || !payment || !totals) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Settlement</h1>
-        <Card className="mt-4 p-4 text-sm text-red-800">{loadError ?? "Loading…"}</Card>
+      <div className="mx-auto max-w-xl space-y-4">
+        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
+        <Card className="p-4 text-sm text-red-800">{loadError ?? "Loading…"}</Card>
       </div>
     );
   }
@@ -435,8 +436,8 @@ export function OrderSettlementPageClient() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Settlement</h1>
-        <p className="mt-1 font-mono text-3xl font-medium text-brand-red">
+        <PageHeader title="Settlement" description="Confirm change, refunds, and serving handoff for this order." />
+        <p className="mt-2 font-narrow text-3xl font-bold tabular-nums tracking-tight text-brand-red">
           #{formatQueueDisplay(order.queue_number)}
         </p>
       </div>

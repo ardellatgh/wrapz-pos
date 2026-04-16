@@ -46,7 +46,7 @@ export function Modal({ open, title, children, onClose, size = "default" }: Moda
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2
             id="modal-title"
-            className="font-display text-xl font-semibold text-brand-text"
+            className="font-sans text-xl font-bold tracking-tight text-brand-text"
           >
             {title}
           </h2>

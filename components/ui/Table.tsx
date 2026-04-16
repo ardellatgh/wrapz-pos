@@ -7,7 +7,7 @@ export function Table({
   return (
     <div className="overflow-x-auto rounded-lg border border-brand-text/10 bg-white">
       <table
-        className={`min-w-full divide-y divide-brand-text/10 text-left text-sm ${className}`}
+        className={`min-w-full divide-y divide-brand-text/10 text-left text-sm [&_tbody>tr]:transition-colors [&_tbody>tr]:duration-100 [&_tbody>tr:hover]:bg-brand-bg/60 ${className}`}
         {...props}
       />
     </div>

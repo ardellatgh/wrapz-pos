@@ -5,6 +5,7 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
@@ -314,8 +315,8 @@ export function MenuPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Menu Database</h1>
+      <div className="space-y-6">
+        <PageHeader title="Menu database" description="Menu items and bundles for the event catalog." />
         <SupabaseSetupBanner />
       </div>
     );
@@ -323,16 +324,16 @@ export function MenuPageClient() {
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-brand-text">Menu Database</h1>
-          <p className="mt-1 text-sm text-brand-text/65">
+      <PageHeader
+        title="Menu database"
+        description={
+          <>
             Menu items and bundles. Images use Supabase Storage bucket{" "}
             <code className="rounded bg-white px-1 font-mono text-xs">{BUCKET}</code>.
-          </p>
-        </div>
-        <Button onClick={openCreate}>Add menu item</Button>
-      </div>
+          </>
+        }
+        actions={<Button onClick={openCreate}>Add menu item</Button>}
+      />
 
       <div className="mt-4 flex gap-2">
         {(

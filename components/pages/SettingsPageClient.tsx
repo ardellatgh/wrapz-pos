@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
@@ -104,23 +105,25 @@ export function SettingsPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Event Settings</h1>
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHeader
+          title="Event settings"
+          description="Singleton configuration for the event (Asia/Jakarta). Requires an internet connection to Supabase."
+        />
         <SupabaseSetupBanner />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-xl">
-      <h1 className="font-display text-2xl font-semibold text-brand-text">Event Settings</h1>
-      <p className="mt-1 text-sm text-brand-text/65">
-        Singleton configuration for the wisuda stall (Asia/Jakarta). Requires an internet connection to
-        Supabase.
-      </p>
+    <div className="mx-auto max-w-xl space-y-6">
+      <PageHeader
+        title="Event settings"
+        description="Singleton configuration for the wisuda stall (Asia/Jakarta). Requires an internet connection to Supabase."
+      />
 
       {loadError && (
-        <Card className="mt-4 border-brand-red/25 bg-brand-red/5">
+        <Card className="border-brand-red/25 bg-brand-red/5">
           <p className="text-sm text-brand-red">{loadError}</p>
           <Button variant="secondary" className="mt-3" onClick={() => void load()}>
             Retry
@@ -128,9 +131,13 @@ export function SettingsPageClient() {
         </Card>
       )}
 
-      <Card className="mt-6">
+      <Card>
         {loading ? (
-          <p className="text-sm text-brand-text/60">Loading…</p>
+          <div className="space-y-3 p-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+            ))}
+          </div>
         ) : (
           <form onSubmit={onSave} className="space-y-4">
             <div>

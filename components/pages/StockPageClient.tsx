@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -225,8 +226,11 @@ export function StockPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-3xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Stock</h1>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title="Stock"
+          description="Current stock is computed from movement history only (no manual overrides on menu rows)."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -234,13 +238,10 @@ export function StockPageClient() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Stock</h1>
-        <p className="mt-1 text-sm text-brand-text/70">
-          Current stock is computed from movement history only (no manual overrides on menu
-          rows).
-        </p>
-      </div>
+      <PageHeader
+        title="Stock"
+        description="Current stock is computed from movement history only (no manual overrides on menu rows)."
+      />
 
       {loadError && (
         <Card className="border-red-200 bg-red-50/80 p-4 text-sm text-red-800">{loadError}</Card>
@@ -259,9 +260,15 @@ export function StockPageClient() {
       </div>
 
       <Card className="p-4">
-        <h2 className="font-display text-lg font-semibold text-brand-text">Overview</h2>
+        <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text/80">
+          Overview
+        </h2>
         {loading ? (
-          <p className="mt-3 text-sm text-brand-text/60">Loading…</p>
+          <div className="mt-3 space-y-3 p-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+            ))}
+          </div>
         ) : items.length === 0 ? (
           <p className="mt-3 text-sm text-brand-text/60">
             No active non-bundle items. Add items on the Menu page first.
@@ -282,9 +289,9 @@ export function StockPageClient() {
                   key={item.id}
                   className={
                     isOut
-                      ? "bg-red-50/60"
+                      ? "bg-semantic-danger/8 ring-1 ring-semantic-danger/10"
                       : isLow
-                        ? "bg-brand-yellow/15"
+                        ? "bg-semantic-warning/10 ring-1 ring-semantic-warning/15"
                         : undefined
                   }
                 >
@@ -295,7 +302,7 @@ export function StockPageClient() {
                   </Td>
                   <Td>
                     {isOut ? (
-                      <Badge className="bg-red-100 text-red-800">Out of stock</Badge>
+                      <Badge tone="danger">Out of stock</Badge>
                     ) : isLow ? (
                       <Badge tone="warning">Low stock</Badge>
                     ) : (
@@ -310,7 +317,9 @@ export function StockPageClient() {
       </Card>
 
       <Card className="p-4">
-        <h2 className="font-display text-lg font-semibold text-brand-text">Movement log</h2>
+        <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text/80">
+          Movement log
+        </h2>
         <p className="mt-1 text-xs text-brand-text/60">
           Newest first · Waktu ditampilkan dalam WIB (Asia/Jakarta)
         </p>

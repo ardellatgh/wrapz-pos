@@ -9,17 +9,32 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          red: "#D93025",
-          yellow: "#F5C518",
+          red: "#b91c1c",
+          yellow: "#c9a227",
           bg: "#FAF9F6",
           text: "#1A1A1A",
         },
         semantic: {
           success: "#2E7D32",
+          warning: "#b45309",
+          danger: "#991b1b",
+          info: "#0369a1",
         },
       },
       fontFamily: {
-        display: ["var(--font-dm-serif)", "Georgia", "serif"],
+        /** Bold condensed sans for titles, KPI numerals, brand */
+        narrow: [
+          "var(--font-barlow-condensed)",
+          "var(--font-manrope)",
+          "system-ui",
+          "sans-serif",
+        ],
+        display: [
+          "var(--font-barlow-condensed)",
+          "var(--font-manrope)",
+          "system-ui",
+          "sans-serif",
+        ],
         sans: ["var(--font-manrope)", "system-ui", "sans-serif"],
         mono: ["var(--font-dm-mono)", "ui-monospace", "monospace"],
       },

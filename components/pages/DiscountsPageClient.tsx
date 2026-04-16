@@ -5,6 +5,7 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
@@ -163,8 +164,8 @@ export function DiscountsPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Discount Presets</h1>
+      <div className="space-y-6">
+        <PageHeader title="Discount presets" description="Preset discounts for the cashier." />
         <SupabaseSetupBanner />
       </div>
     );
@@ -172,13 +173,11 @@ export function DiscountsPageClient() {
 
   return (
     <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-brand-text">Discount Presets</h1>
-          <p className="mt-1 text-sm text-brand-text/65">Preset discounts for the cashier (Stage 3).</p>
-        </div>
-        <Button onClick={openCreate}>Add preset</Button>
-      </div>
+      <PageHeader
+        title="Discount presets"
+        description="Preset discounts for the cashier (Stage 3)."
+        actions={<Button onClick={openCreate}>Add preset</Button>}
+      />
 
       {loadError && (
         <Card className="mt-4 border-brand-red/25 bg-brand-red/5">
@@ -191,7 +190,11 @@ export function DiscountsPageClient() {
 
       <Card className="mt-6 p-0 overflow-hidden">
         {loading ? (
-          <p className="p-4 text-sm text-brand-text/60">Loading…</p>
+          <div className="space-y-3 p-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+            ))}
+          </div>
         ) : rows.length === 0 ? (
           <p className="p-4 text-sm text-brand-text/60">
             No discount presets. Add one to offer discounts to customers.

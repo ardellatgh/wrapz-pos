@@ -4,13 +4,27 @@
 
 :root {
   --color-bg: #faf9f6;
-  --color-primary: #d93025;
-  --color-accent: #f5c518;
+  --color-primary: #b91c1c;
+  --color-accent: #c9a227;
   --color-text: #1a1a1a;
   --color-success: #2e7d32;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
 }
 
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
+}
+
+* {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 100ms;
+  transition-timing-function: ease;
+}
+
+/* Override for elements that should not transition */
+input,
+textarea,
+select {
+  transition: none;
 }

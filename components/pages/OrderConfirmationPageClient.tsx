@@ -116,7 +116,7 @@ export function OrderConfirmationPageClient() {
       </div>
 
       <Card className="p-4 text-left">
-        <h2 className="font-display text-lg font-semibold text-brand-text">Items</h2>
+        <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Items</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {lines.map((l, i) => (
             <li key={i} className="flex justify-between gap-4">

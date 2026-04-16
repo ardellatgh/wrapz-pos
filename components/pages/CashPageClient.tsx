@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
@@ -328,8 +329,16 @@ export function CashPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Cash control</h1>
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHeader
+          title="Cash control"
+          description={
+            <>
+              Opening float and refills are <strong>not</strong> revenue — they only change physical cash in the
+              drawer. Times shown in WIB (Asia/Jakarta).
+            </>
+          }
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -337,13 +346,15 @@ export function CashPageClient() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Cash control</h1>
-        <p className="mt-1 text-sm text-brand-text/70">
-          Opening float and refills are <strong>not</strong> revenue — they only change physical
-          cash in the drawer. Times shown in WIB (Asia/Jakarta).
-        </p>
-      </div>
+      <PageHeader
+        title="Cash control"
+        description={
+          <>
+            Opening float and refills are <strong>not</strong> revenue — they only change physical cash in the
+            drawer. Times shown in WIB (Asia/Jakarta).
+          </>
+        }
+      />
 
       {loadError && (
         <Card className="border-red-200 bg-red-50/80 p-4 text-sm text-red-800">{loadError}</Card>
@@ -356,7 +367,11 @@ export function CashPageClient() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-brand-text/60">Loading…</p>
+        <div className="space-y-3 p-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+          ))}
+        </div>
       ) : openSession && activeSummary ? (
         <>
           <Card className="p-5">
@@ -402,7 +417,7 @@ export function CashPageClient() {
           </Card>
 
           <Card className="p-5">
-            <h2 className="font-display text-lg font-semibold text-brand-text">Add cash refill</h2>
+            <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Add cash refill</h2>
             <p className="mt-2 rounded-md border border-brand-yellow/40 bg-brand-yellow/15 px-3 py-2 text-sm text-brand-text">
               This adds physical float to the register. It is <strong>not</strong> counted as
               sales revenue.
@@ -435,7 +450,7 @@ export function CashPageClient() {
           </Card>
 
           <Card className="p-5">
-            <h2 className="font-display text-lg font-semibold text-brand-text">Cash movements</h2>
+            <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Cash movements</h2>
             {movements.length === 0 ? (
               <p className="mt-2 text-sm text-brand-text/60">No movements yet.</p>
             ) : (
@@ -510,7 +525,7 @@ export function CashPageClient() {
           )}
 
           <Card className="p-5">
-            <h2 className="font-display text-lg font-semibold text-brand-text">Open cash session</h2>
+            <h2 className="font-sans text-lg font-semibold tracking-tight text-brand-text">Open cash session</h2>
             <p className="mt-1 text-sm text-brand-text/70">
               Record the starting float before taking payments. This is not revenue.
             </p>

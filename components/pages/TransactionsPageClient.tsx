@@ -6,6 +6,7 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Table, Td, Th } from "@/components/ui/Table";
 import { formatDateTime, formatQueueNumber, formatRupiah } from "@/lib/format";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -222,8 +223,8 @@ export function TransactionsPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Transactions</h1>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHeader title="Transactions" description="Read-only order log · Times in WIB (Asia/Jakarta)" />
         <SupabaseSetupBanner />
       </div>
     );
@@ -231,24 +232,26 @@ export function TransactionsPageClient() {
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-brand-text">Transactions</h1>
-          <p className="mt-1 text-sm text-brand-text/70">
-            Read-only order log · Times in WIB (Asia/Jakarta)
-          </p>
-        </div>
-        <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Transactions"
+        description="Read-only order log · Times in WIB (Asia/Jakarta)"
+        actions={
+          <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
+            Refresh
+          </Button>
+        }
+      />
 
       {loadError && (
         <Card className="border-red-200 bg-red-50/80 p-3 text-sm text-red-800">{loadError}</Card>
       )}
 
       {loading ? (
-        <p className="text-sm text-brand-text/60">Loading…</p>
+        <div className="space-y-3 p-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+          ))}
+        </div>
       ) : orders.length === 0 ? (
         <Card className="p-8 text-center text-sm text-brand-text/70">
           No transactions yet.{" "}
@@ -376,7 +379,7 @@ function DetailPanel({
 }) {
   return (
     <Card className="border border-brand-text/10 p-4 text-left shadow-none">
-      <h3 className="font-display text-base font-semibold text-brand-text">
+      <h3 className="font-sans text-base font-semibold tracking-tight text-brand-text">
         Order #{formatQueueNumber(order.queue_number)}
       </h3>
       <div className="mt-3">

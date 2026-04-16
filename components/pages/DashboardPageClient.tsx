@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { EVENT_SETTINGS_ROW_ID } from "@/lib/constants";
 import { formatDateTime, formatRupiah } from "@/lib/format";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -187,8 +188,11 @@ export function DashboardPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Dashboard</h1>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHeader
+          title="Dashboard"
+          description="Read-only operational summary for the active event."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -196,22 +200,39 @@ export function DashboardPageClient() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="relative overflow-hidden rounded-2xl border border-brand-red/15 bg-gradient-to-br from-white via-brand-bg to-brand-yellow/20 px-5 py-6 shadow-card">
-        <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-brand-red/10" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-24 w-40 rounded-full bg-brand-yellow/25 blur-2xl" />
-        <div className="relative flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand-red">Live board</p>
-            <h1 className="font-display text-2xl font-semibold text-brand-text md:text-3xl">Dashboard</h1>
-            <p className="mt-1 text-sm text-brand-text/70">
+      <div className="flex flex-col gap-4 rounded-2xl border border-brand-text/10 bg-white px-5 py-5 sm:flex-row sm:items-stretch sm:justify-between">
+        <div className="flex min-w-0 flex-1 gap-4">
+          <div className="w-1 shrink-0 self-stretch rounded-full bg-brand-red" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-red">Live board</p>
+            <h1 className="font-narrow text-[1.75rem] font-bold uppercase leading-[1.1] tracking-tight text-brand-text md:text-[2rem]">
+              Dashboard
+            </h1>
+            <p className="mt-1.5 text-sm text-brand-text/70">
               Read-only operational summary · Refreshes every {REFRESH_MS / 1000}s
               {lastRefreshedAt != null && (
-                <span className="block text-xs text-brand-text/55">
+                <span className="mt-1 block text-xs text-brand-text/50">
                   Last refreshed: {formatDateTime(new Date(lastRefreshedAt))}
                 </span>
               )}
             </p>
           </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+          {data && setupDone && (
+            <div
+              className="inline-flex items-center gap-2 self-start rounded-full border border-semantic-success/40 bg-semantic-success/10 px-3 py-2 text-xs font-semibold text-semantic-success sm:self-end"
+              role="status"
+            >
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-semantic-success text-[11px] text-white"
+                aria-hidden
+              >
+                ✓
+              </span>
+              <span className="max-w-[11rem] leading-tight">Event setup complete</span>
+            </div>
+          )}
           <Button
             type="button"
             variant="secondary"
@@ -228,18 +249,28 @@ export function DashboardPageClient() {
       )}
 
       {loading && !data ? (
-        <p className="text-sm text-brand-text/60">Loading dashboard…</p>
+        <div className="space-y-3 p-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+          ))}
+        </div>
       ) : data && data.anyOrdersCount === 0 ? (
-        <Card className="border-brand-yellow/35 bg-white p-10 text-center shadow-card">
-          <p className="text-brand-text/80">No orders yet. Start the event by creating the first order.</p>
-          <Link href="/order/new" className="mt-4 inline-block text-sm font-medium text-brand-red underline">
-            New order
-          </Link>
+        <Card className="border-brand-text/10 p-0 text-center">
+          <div className="py-12 text-center">
+            <p className="font-narrow text-lg font-bold uppercase tracking-wide text-brand-text/55">No orders yet</p>
+            <p className="mt-1 text-sm text-brand-text/45">Start the event by creating the first order.</p>
+            <Link
+              href="/order/new"
+              className="mt-5 inline-flex items-center justify-center rounded-lg bg-brand-red px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand-red/90"
+            >
+              New order →
+            </Link>
+          </div>
         </Card>
       ) : data ? (
         <>
           {showCashWarning && (
-            <Card className="border-brand-yellow/60 bg-brand-yellow/15 p-3 text-sm text-brand-text">
+            <Card className="border-semantic-warning/45 bg-amber-50/90 p-3 text-sm text-brand-text ring-1 ring-semantic-warning/15">
               Cash session not open. Set opening cash before processing orders.{" "}
               <Link href="/cash" className="font-medium text-brand-red underline">
                 Cash Control
@@ -247,7 +278,7 @@ export function DashboardPageClient() {
             </Card>
           )}
           {showStockWarning && (
-            <Card className="border-brand-yellow/60 bg-brand-yellow/15 p-3 text-sm text-brand-text">
+            <Card className="border-semantic-warning/45 bg-amber-50/90 p-3 text-sm text-brand-text ring-1 ring-semantic-warning/15">
               Opening stock not recorded. Set stock before the event starts.{" "}
               <Link href="/stock" className="font-medium text-brand-red underline">
                 Stock
@@ -255,27 +286,9 @@ export function DashboardPageClient() {
             </Card>
           )}
 
-          {setupDone ? (
-            <Card className="border-semantic-success/35 bg-gradient-to-r from-semantic-success/10 to-white p-5 shadow-card">
-              <div className="flex flex-wrap items-start gap-3">
-                <span
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-semantic-success text-2xl text-white shadow-sm"
-                  aria-hidden
-                >
-                  ✓
-                </span>
-                <div>
-                  <h2 className="font-display text-lg font-semibold text-semantic-success">Event Setup Complete</h2>
-                  <p className="mt-1 text-sm text-brand-text/75">
-                    Event name, menu, opening stock, and cash session are ready. You can run service with
-                    confidence.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card className="border-brand-yellow/50 bg-white p-5 shadow-card">
-              <h2 className="font-display text-lg font-semibold text-brand-text">Event readiness</h2>
+          {!setupDone ? (
+            <Card className="border-semantic-warning/40 bg-amber-50/35 p-5 ring-1 ring-semantic-warning/15">
+              <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text">Event readiness</h2>
               <p className="mt-1 text-xs text-brand-text/60">Complete each item before go-live.</p>
               <ul className="mt-4 space-y-2.5 text-sm">
                 <ReadinessRow ok={data.readiness.eventNameOk} label="Event name configured" href="/settings" />
@@ -284,16 +297,18 @@ export function DashboardPageClient() {
                 <ReadinessRow ok={data.readiness.cashSessionOk} label="Cash session open" href="/cash" />
               </ul>
             </Card>
-          )}
+          ) : null}
 
-          <Card className="overflow-hidden border-brand-red/20 bg-white p-5 shadow-card">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <Card className="overflow-hidden border-brand-red/25 bg-white p-5 ring-1 ring-brand-red/10">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-text/8 pb-4">
               <div>
-                <h2 className="font-display text-lg font-semibold text-brand-text">Net sales vs target</h2>
-                <p className="mt-0.5 text-xs text-brand-text/55">Paid orders · goal from Event Settings</p>
+                <h2 className="font-narrow text-sm font-bold uppercase tracking-[0.12em] text-brand-text/75">
+                  Net sales vs target
+                </h2>
+                <p className="mt-1 text-xs text-brand-text/55">Paid orders · goal from Event Settings</p>
               </div>
               {progressPct != null && (
-                <span className="rounded-full bg-brand-yellow/35 px-3 py-1 font-mono text-sm font-semibold text-brand-text tabular-nums">
+                <span className="rounded-md bg-brand-text px-3 py-1.5 font-narrow text-base font-bold tabular-nums text-white">
                   {progressPct}%
                 </span>
               )}
@@ -315,75 +330,80 @@ export function DashboardPageClient() {
             ) : (
               <>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-xl border border-brand-text/10 bg-brand-bg/60 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Net sales</p>
-                    <p className="mt-1 font-mono text-2xl font-semibold text-brand-red tabular-nums">
+                  <div className="rounded-xl border border-brand-red/20 bg-brand-red/[0.04] p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-text/45">
+                      Net sales
+                    </p>
+                    <p className="font-narrow mt-2 text-3xl font-bold tabular-nums tracking-tight text-brand-red">
                       {formatRupiah(data.netSales)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-brand-text/10 bg-brand-bg/60 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Target revenue</p>
-                    <p className="mt-1 font-mono text-2xl font-semibold text-brand-text tabular-nums">
+                  <div className="rounded-xl border border-semantic-info/25 bg-semantic-info/10 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-semantic-info/70">
+                      Target revenue
+                    </p>
+                    <p className="font-narrow mt-2 text-3xl font-bold tabular-nums tracking-tight text-brand-text">
                       {formatRupiah(data.targetRevenue)}
                     </p>
                   </div>
                 </div>
-                <div className="mt-5">
+                <div className="mt-6">
                   <div className="h-4 w-full overflow-hidden rounded-full bg-brand-text/10">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-brand-red to-brand-red/85 transition-[width] duration-500"
+                      className="h-full rounded-full bg-brand-red transition-[width] duration-500"
                       style={{ width: `${progressPct ?? 0}%` }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-brand-text/55">
-                    {progressPct != null && progressPct >= 100
-                      ? "Target reached or exceeded on net sales."
-                      : "Progress is net sales divided by target revenue, capped at 100%."}
+                  <p className="mt-2 text-xs font-medium text-brand-text/55">
+                    {`${progressPct ?? 0}% of target`}
+                    {(progressPct ?? 0) >= 100 ? " (met)" : ""}
                   </p>
                 </div>
               </>
             )}
           </Card>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Card className="border-brand-yellow/45 bg-gradient-to-br from-brand-yellow/15 to-white p-4 shadow-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Net sales</p>
-              <p className="mt-1 font-mono text-2xl font-semibold text-brand-yellow tabular-nums">
-                {formatRupiah(data.netSales)}
-              </p>
-            </Card>
-            <Card className="border-brand-text/10 p-4 shadow-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Total orders</p>
-              <p className="mt-1 font-mono text-2xl font-semibold text-brand-text tabular-nums">
-                {data.totalPaidOrders}
-              </p>
-              <p className="mt-1 text-xs text-brand-text/55">Paid orders only</p>
-            </Card>
-            <Card className="border-brand-text/10 p-4 shadow-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">AOV</p>
-              <p className="mt-1 font-mono text-2xl font-semibold text-brand-text tabular-nums">
-                {data.totalPaidOrders > 0 ? formatRupiah(Math.round(data.aov)) : "—"}
-              </p>
-            </Card>
+          <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+            <KpiTile
+              label="Gross sales"
+              value={formatRupiah(data.grossSales)}
+              className="border-sky-200/90 bg-sky-50/70"
+              labelClassName="text-sky-900/50"
+              valueClassName="text-sky-950"
+            />
+            <KpiTile
+              label="Discount total"
+              value={formatRupiah(data.discountTotal)}
+              className="border-amber-200/90 bg-amber-50/80"
+              labelClassName="text-amber-900/50"
+              valueClassName="text-amber-950"
+            />
+            <KpiTile
+              label="Net sales"
+              value={formatRupiah(data.netSales)}
+              className="border-brand-red/35 bg-brand-red/[0.06]"
+              labelClassName="text-brand-red/55"
+              valueClassName="text-brand-red"
+            />
+            <KpiTile
+              label="Total orders"
+              value={String(data.totalPaidOrders)}
+              hint="Paid orders only"
+              className="border-brand-text/15 bg-brand-bg/90"
+              labelClassName="text-brand-text/45"
+              valueClassName="text-brand-text"
+            />
+            <KpiTile
+              label="AOV"
+              value={data.totalPaidOrders > 0 ? formatRupiah(Math.round(data.aov)) : "—"}
+              className="border-violet-200/90 bg-violet-50/70"
+              labelClassName="text-violet-900/50"
+              valueClassName="text-violet-950"
+            />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Card className="border-brand-red/15 p-4 shadow-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Gross sales</p>
-              <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-brand-text">
-                {formatRupiah(data.grossSales)}
-              </p>
-            </Card>
-            <Card className="border-brand-red/15 p-4 shadow-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-text/50">Discount total</p>
-              <p className="mt-1 font-mono text-xl font-semibold tabular-nums text-brand-text">
-                {formatRupiah(data.discountTotal)}
-              </p>
-            </Card>
-          </div>
-
-          <Card className="border-brand-text/10 bg-white p-5 shadow-card">
-            <h2 className="font-display text-lg font-semibold text-brand-text">Top selling menu</h2>
+          <Card className="border-brand-text/10 bg-white p-5">
+            <h2 className="font-narrow text-sm font-bold uppercase tracking-wide text-brand-text/80">Top selling menu</h2>
             <p className="mt-0.5 text-xs text-brand-text/55">Units sold on paid orders · top 5</p>
             {data.topSelling.length === 0 ? (
               <p className="mt-4 text-sm text-brand-text/60">No line items yet.</p>
@@ -393,7 +413,7 @@ export function DashboardPageClient() {
                   const pct = Math.round((row.units / topMaxUnits) * 100);
                   return (
                     <li key={row.menu_item_id} className="flex gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-red text-sm font-bold text-white shadow-sm">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-brand-text/15 bg-brand-bg font-mono text-sm font-semibold text-brand-text">
                         {i + 1}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -403,7 +423,7 @@ export function DashboardPageClient() {
                             {row.units} sold
                           </p>
                         </div>
-                        <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-brand-text/10">
+                        <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-brand-text/10">
                           <div
                             className="h-full rounded-full bg-brand-yellow/90"
                             style={{ width: `${pct}%` }}
@@ -422,16 +442,50 @@ export function DashboardPageClient() {
   );
 }
 
+function KpiTile({
+  label,
+  value,
+  hint,
+  className = "",
+  labelClassName = "text-brand-text/50",
+  valueClassName = "text-brand-text",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  className?: string;
+  labelClassName?: string;
+  valueClassName?: string;
+}) {
+  return (
+    <Card className={`min-w-[132px] flex-1 p-4 md:min-w-0 ${className}`}>
+      <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClassName}`}>{label}</p>
+      <p
+        className={`font-narrow mt-2 text-[1.45rem] font-bold tabular-nums leading-none tracking-tight md:text-[1.65rem] ${valueClassName}`}
+      >
+        {value}
+      </p>
+      {hint ? <p className="mt-1.5 text-[11px] text-brand-text/50">{hint}</p> : null}
+    </Card>
+  );
+}
+
 function ReadinessRow({ ok, label, href }: { ok: boolean; label: string; href: string }) {
   return (
     <li className="flex items-start gap-2">
       {ok ? (
-        <span className="text-semantic-success" aria-label="OK">
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-semantic-success/15 text-xs font-bold text-semantic-success"
+          aria-label="OK"
+        >
           ✓
         </span>
       ) : (
-        <span className="text-brand-yellow" aria-label="Needs attention">
-          ⚠
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-semantic-warning/20 text-xs font-bold text-semantic-warning"
+          aria-label="Needs attention"
+        >
+          !
         </span>
       )}
       <span className="flex-1">

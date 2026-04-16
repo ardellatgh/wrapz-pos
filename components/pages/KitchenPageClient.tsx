@@ -5,6 +5,7 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { useKioskMode } from "@/components/layout/KioskModeProvider";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 import { formatJakartaDateTime, formatQueueDisplay } from "@/lib/format";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -57,14 +58,26 @@ type KitchenOrder = {
 };
 
 const COLUMNS: { key: BoardServingStatus; label: string; headerClass: string }[] = [
-  { key: "queued", label: "Queued", headerClass: "border-b-4 border-brand-text/25 text-brand-text" },
-  { key: "in_progress", label: "In Progress", headerClass: "border-b-4 border-brand-yellow text-brand-text" },
+  {
+    key: "queued",
+    label: "Queued",
+    headerClass: "bg-brand-text/5 border-b-2 border-brand-text/25 text-brand-text/70",
+  },
+  {
+    key: "in_progress",
+    label: "In Progress",
+    headerClass: "bg-brand-yellow/10 border-b-2 border-brand-yellow text-brand-text",
+  },
   {
     key: "ready_to_serve",
     label: "Ready to Serve",
-    headerClass: "border-b-4 border-semantic-success text-brand-text",
+    headerClass: "bg-semantic-success/8 border-b-2 border-semantic-success text-semantic-success",
   },
-  { key: "served", label: "Served", headerClass: "border-b-4 border-brand-text/15 text-brand-text/70" },
+  {
+    key: "served",
+    label: "Served",
+    headerClass: "bg-brand-text/3 border-b-2 border-brand-text/10 text-brand-text/40",
+  },
 ];
 
 function isBoardStatus(s: string): s is BoardServingStatus {
@@ -566,8 +579,8 @@ export function KitchenPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-6xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Kitchen</h1>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHeader title="Kitchen" description="Live queue for prep and handoff. Auto-refreshes on an interval." />
         <SupabaseSetupBanner />
       </div>
     );
@@ -578,32 +591,39 @@ export function KitchenPageClient() {
   return (
     <div ref={boardHostRef} className={`flex min-h-0 flex-col ${kiosk ? "min-h-screen bg-brand-bg" : ""}`}>
       <div
-        className={`mb-3 flex flex-shrink-0 flex-wrap items-end justify-between gap-2 ${
-          kiosk ? "border-b border-brand-text/10 bg-white px-3 py-2" : ""
-        }`}
+        className={`mb-3 flex-shrink-0 ${kiosk ? "border-b border-brand-text/10 bg-white px-3 py-2" : ""}`}
       >
-        <div>
-          <h1 className="font-display text-xl font-semibold text-brand-text md:text-2xl">Kitchen</h1>
-          <p className="mt-0.5 text-xs text-brand-text/65">
-            {lastUpdatedAt != null && secondsSinceUpdate != null
+        <PageHeader
+          className={kiosk ? "!border-0 pb-0" : ""}
+          eyebrow="Service line"
+          title="Kitchen"
+          description={
+            lastUpdatedAt != null && secondsSinceUpdate != null
               ? `Last updated ${secondsSinceUpdate}s ago · auto-refresh every ${POLL_MS / 1000}s`
-              : "Loading board…"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" className="min-h-[40px] px-3 text-xs" onClick={() => void loadBoard({ silent: true })}>
-            Refresh
-          </Button>
-          {kiosk ? (
-            <Button type="button" variant="primary" className="min-h-[40px] px-3 text-xs" onClick={() => void exitKiosk()}>
-              Exit fullscreen
-            </Button>
-          ) : (
-            <Button type="button" variant="secondary" className="min-h-[40px] px-3 text-xs" onClick={() => void enterKiosk()}>
-              Fullscreen
-            </Button>
-          )}
-        </div>
+              : "Loading board…"
+          }
+          actions={
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-[40px] px-3 text-xs"
+                onClick={() => void loadBoard({ silent: true })}
+              >
+                Refresh
+              </Button>
+              {kiosk ? (
+                <Button type="button" variant="primary" className="min-h-[40px] px-3 text-xs" onClick={() => void exitKiosk()}>
+                  Exit fullscreen
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" className="min-h-[40px] px-3 text-xs" onClick={() => void enterKiosk()}>
+                  Fullscreen
+                </Button>
+              )}
+            </>
+          }
+        />
       </div>
 
       {fetchError && (
@@ -613,7 +633,11 @@ export function KitchenPageClient() {
       )}
 
       {loading && orders.length === 0 ? (
-        <p className="text-sm text-brand-text/60">Loading orders…</p>
+        <div className="space-y-3 p-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-brand-text/8" />
+          ))}
+        </div>
       ) : !loading && orders.length === 0 ? (
         <Card className="border-brand-text/10 p-8 text-center shadow-card">
           <p className="text-sm text-brand-text/75">No active kitchen orders.</p>
@@ -628,8 +652,8 @@ export function KitchenPageClient() {
                 key={col.key}
                 className="flex w-[min(100%,288px)] shrink-0 flex-col rounded-lg border border-brand-text/10 bg-white shadow-card"
               >
-                <header className={`rounded-t-lg bg-white px-2 py-1.5 ${col.headerClass}`}>
-                  <h2 className="font-display text-base font-semibold tracking-tight">{col.label}</h2>
+                <header className={`rounded-t-lg px-3 py-2 ${col.headerClass}`}>
+                  <h2 className="font-sans text-base font-semibold tracking-tight">{col.label}</h2>
                   <p className="mt-0 font-mono text-[10px] text-brand-text/55">{list.length} orders</p>
                 </header>
                 <div className="flex max-h-[calc(100vh-188px)] flex-col gap-1.5 overflow-y-auto p-1.5">
@@ -713,7 +737,7 @@ function KitchenOrderCard({
 
   return (
     <Card
-      className={`flex flex-col gap-1.5 p-2 ${muted ? "border-brand-text/10 bg-brand-bg/80" : "border-brand-text/12 bg-white"}`}
+      className={`flex flex-col gap-1.5 p-2 text-[11px] leading-snug ${muted ? "border-brand-text/10 bg-brand-bg/80" : "border-brand-text/12 bg-white"}`}
     >
       <header className="space-y-0 border-b border-brand-text/10 pb-1.5">
         <p
@@ -727,18 +751,18 @@ function KitchenOrderCard({
           {displayName}
         </p>
         <div className="flex flex-wrap items-baseline justify-between gap-x-2 pt-0.5">
-          <span className="text-[9px] font-medium uppercase tracking-wide text-brand-text/45">Waiting</span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-brand-text/45">Waiting</span>
           <span className={`font-mono text-[11px] font-semibold ${muted ? "text-brand-text/50" : "text-brand-text"}`}>
             {waitingLabel}
           </span>
         </div>
-        <p className="text-[9px] leading-tight text-brand-text/40">Since order placed</p>
+        <p className="text-[10px] leading-tight text-brand-text/40">Since order placed</p>
       </header>
 
       <div className="space-y-0.5" role="group" aria-label="Checklist progress">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[9px] font-medium uppercase tracking-wide text-brand-text/40">Progress</span>
-          <span className="font-mono text-[9px] tabular-nums text-brand-text/50">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-brand-text/40">Progress</span>
+          <span className="font-mono text-[10px] tabular-nums text-brand-text/50">
             {progress.done}/{progress.total}
           </span>
         </div>
@@ -755,9 +779,9 @@ function KitchenOrderCard({
           <span className="text-brand-text/50">Payment</span>
           <span className="font-medium text-brand-text">{formatPayMethod(order.payment_method)}</span>
         </div>
-        <div className="flex flex-col gap-0">
-          <span className="text-[9px] text-brand-text/45">Confirmed</span>
-          <span className="font-mono text-[9px] leading-snug text-brand-text">
+        <div className="flex justify-between gap-2">
+          <span className="text-brand-text/45">Confirmed</span>
+          <span className="font-mono text-[10px] text-brand-text/70">
             {order.confirmed_at ? formatJakartaDateTime(order.confirmed_at) : "—"}
           </span>
         </div>
@@ -770,7 +794,7 @@ function KitchenOrderCard({
           if (line.is_bundle && line.bundleComponents && line.bundleComponents.length > 0) {
             return (
               <li key={line.id} className="border-t border-brand-text/10 first:border-t-0">
-                <div className="flex min-h-[38px] items-start gap-1.5 py-1 pl-0.5">
+                <div className="flex min-h-[32px] items-start gap-1.5 py-1 pl-0.5">
                   <span
                     className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-brand-text/20 ${
                       bundleDone ? "border-semantic-success/80 bg-semantic-success/10" : "bg-white"
@@ -796,7 +820,7 @@ function KitchenOrderCard({
                         onClick={() =>
                           checklistInteractive && onToggleBundleComponent(line, comp.component_item_id)
                         }
-                        className={`flex min-h-[38px] w-full items-start gap-1.5 py-0.5 text-left ${
+                        className={`flex min-h-[32px] w-full items-start gap-1.5 py-0.5 text-left ${
                           !checklistInteractive ? "cursor-default opacity-65" : "active:bg-brand-bg/80"
                         }`}
                       >
@@ -837,7 +861,7 @@ function KitchenOrderCard({
                 type="button"
                 disabled={!checklistInteractive}
                 onClick={() => checklistInteractive && onToggleLine(line)}
-                className={`flex min-h-[38px] w-full items-start gap-1.5 py-1 text-left ${
+                className={`flex min-h-[32px] w-full items-start gap-1.5 py-1 text-left ${
                   !checklistInteractive ? "cursor-default opacity-65" : "active:bg-brand-bg/80"
                 }`}
               >
@@ -863,7 +887,7 @@ function KitchenOrderCard({
       </ul>
 
       {hasCashierNotes && (
-        <div className="space-y-0.5 rounded border border-brand-text/10 bg-white px-1.5 py-1 text-[9px] leading-snug">
+        <div className="space-y-0.5 rounded border border-brand-text/10 bg-white px-1.5 py-1 text-[10px] leading-snug">
           <p className="font-medium uppercase tracking-wide text-brand-text/40">Cashier notes</p>
           {order.payment_notes != null && order.payment_notes.trim().length > 0 && (
             <p className="text-brand-text/75">
@@ -880,13 +904,13 @@ function KitchenOrderCard({
         </div>
       )}
 
-      <div className="space-y-0.5 rounded border border-dashed border-brand-text/10 bg-brand-bg/25 px-1.5 py-1">
-        <label className="text-[9px] font-medium uppercase tracking-wide text-brand-text/38" htmlFor={`kn-${order.id}`}>
+      <div className="space-y-1 rounded border border-dashed border-brand-text/10 bg-brand-bg/25 px-1.5 py-1">
+        <label className="text-[10px] font-medium uppercase tracking-wide text-brand-text/38" htmlFor={`kn-${order.id}`}>
           Kitchen note
         </label>
         <textarea
           id={`kn-${order.id}`}
-          rows={2}
+          rows={1}
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}
           placeholder="Optional…"
@@ -895,7 +919,7 @@ function KitchenOrderCard({
         <Button
           type="button"
           variant="secondary"
-          className="w-full min-h-[34px] px-2 text-[9px]"
+          className="w-full min-h-[28px] px-2 text-[10px]"
           onClick={() => onSaveNote(noteDraft)}
         >
           Save note
@@ -930,7 +954,12 @@ function KitchenOrderCard({
           </Button>
         )}
         {showMoveBack && (
-          <Button type="button" variant="ghost" className="min-h-[34px] w-full text-[9px] text-brand-text/65" onClick={onMoveBack}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-[34px] w-full rounded-lg border border-brand-text/15 text-xs text-brand-text/65"
+            onClick={onMoveBack}
+          >
             Move back one step
           </Button>
         )}

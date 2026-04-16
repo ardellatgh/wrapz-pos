@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
@@ -97,8 +98,11 @@ export function ExportPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Backup &amp; Export</h1>
+      <div className="mx-auto max-w-2xl space-y-6">
+        <PageHeader
+          title="Backup & export"
+          description="Export event data as TSV files in a ZIP (built in the browser). Requires a live connection to Supabase."
+        />
         <SupabaseSetupBanner />
       </div>
     );
@@ -106,13 +110,10 @@ export function ExportPageClient() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Backup &amp; Export</h1>
-        <p className="mt-1 text-sm text-brand-text/70">
-          Export a full backup of all event data as TSV files in a ZIP archive (built in the browser). If any
-          table fails to load, no ZIP is downloaded. Requires a live connection to Supabase.
-        </p>
-      </div>
+      <PageHeader
+        title="Backup & export"
+        description="Export a full backup of all event data as TSV files in a ZIP archive (built in the browser). If any table fails to load, no ZIP is downloaded. Requires a live connection to Supabase."
+      />
 
       <Card className="p-4">
         <h2 className="text-sm font-semibold text-brand-text">Included tables</h2>
@@ -155,7 +156,7 @@ export function ExportPageClient() {
       </Button>
 
       <Card className="border-2 border-red-800/40 bg-red-50/50 p-5 shadow-card">
-        <h2 className="font-display text-lg font-semibold text-red-900">Danger zone</h2>
+        <h2 className="font-sans text-lg font-semibold tracking-tight text-red-900">Danger zone</h2>
         <p className="mt-1 text-sm text-red-950/90">
           Permanently delete data from Supabase. You must complete a successful full ZIP export in this session
           before purge is enabled. Export again after a purge to unlock another purge. Execution runs on the

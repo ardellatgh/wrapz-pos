@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -320,8 +321,8 @@ export function OrderPaymentPageClient() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Payment</h1>
+      <div className="mx-auto max-w-xl space-y-6">
+        <PageHeader title="Payment" description="Record tender and payment method for this order." />
         <SupabaseSetupBanner />
       </div>
     );
@@ -329,18 +330,18 @@ export function OrderPaymentPageClient() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Payment</h1>
-        <p className="mt-4 text-sm text-brand-text/60">Loading order…</p>
+      <div className="mx-auto max-w-xl space-y-4">
+        <PageHeader title="Payment" description="Record tender and payment method for this order." />
+        <p className="text-sm text-brand-text/60">Loading order…</p>
       </div>
     );
   }
 
   if (loadError || !order) {
     return (
-      <div className="mx-auto max-w-xl">
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Payment</h1>
-        <Card className="mt-4 p-4 text-sm text-red-800">{loadError ?? "Order not found."}</Card>
+      <div className="mx-auto max-w-xl space-y-4">
+        <PageHeader title="Payment" description="Record tender and payment method for this order." />
+        <Card className="p-4 text-sm text-red-800">{loadError ?? "Order not found."}</Card>
       </div>
     );
   }
@@ -350,8 +351,8 @@ export function OrderPaymentPageClient() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold text-brand-text">Payment</h1>
-        <p className="mt-1 font-mono text-4xl font-medium text-brand-red">
+        <PageHeader title="Payment" description="Record tender and payment method for this order." />
+        <p className="mt-2 font-narrow text-4xl font-bold tabular-nums tracking-tight text-brand-red">
           #{formatQueueDisplay(order.queue_number)}
         </p>
         {order.customer_name && (
@@ -389,7 +390,9 @@ export function OrderPaymentPageClient() {
           </div>
           <div className="flex justify-between text-base font-semibold">
             <span>Total</span>
-            <span className="font-mono">{formatRupiah(total)}</span>
+            <span className="font-narrow text-lg font-bold tabular-nums tracking-tight text-brand-red">
+              {formatRupiah(total)}
+            </span>
           </div>
         </div>
       </Card>
@@ -421,16 +424,33 @@ export function OrderPaymentPageClient() {
 
           <Card className="space-y-4 p-4">
             <Label>Payment method</Label>
-            <div className="flex flex-wrap gap-3 text-sm">
-              {(["cash", "qris", "transfer"] as const).map((m) => (
-                <label key={m} className="flex cursor-pointer items-center gap-2 capitalize">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {(
+                [
+                  ["cash", "💵", "Cash"],
+                  ["qris", "🧾", "QRIS"],
+                  ["transfer", "🏦", "Transfer"],
+                ] as const
+              ).map(([m, emoji, title]) => (
+                <label
+                  key={m}
+                  className={`flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-3 text-left shadow-sm transition hover:border-brand-text/20 ${
+                    method === m
+                      ? "border-brand-red bg-brand-red/[0.07] ring-1 ring-brand-red/25"
+                      : "border-brand-text/12 bg-white"
+                  }`}
+                >
                   <input
                     type="radio"
                     name="pm"
+                    className="sr-only"
                     checked={method === m}
                     onChange={() => setMethod(m)}
                   />
-                  {m}
+                  <span className="text-xl leading-none" aria-hidden>
+                    {emoji}
+                  </span>
+                  <span className="text-sm font-semibold tracking-tight text-brand-text">{title}</span>
                 </label>
               ))}
             </div>
@@ -463,7 +483,9 @@ export function OrderPaymentPageClient() {
                 />
               )}
               {exactSelected && (
-                <p className="font-mono text-lg text-brand-text">{formatRupiah(total)}</p>
+                <p className="font-narrow text-xl font-bold tabular-nums tracking-tight text-brand-text">
+                  {formatRupiah(total)}
+                </p>
               )}
             </div>
 
