@@ -9,9 +9,11 @@ type ModalProps = {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  /** Wider panel for dense tables (e.g. bulk stock forms). */
+  size?: "default" | "wide";
 };
 
-export function Modal({ open, title, children, onClose }: ModalProps) {
+export function Modal({ open, title, children, onClose, size = "default" }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -36,7 +38,11 @@ export function Modal({ open, title, children, onClose }: ModalProps) {
         aria-label="Close dialog"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-brand-text/10 bg-white p-5 shadow-lg">
+      <div
+        className={`relative z-10 w-full rounded-xl border border-brand-text/10 bg-white p-5 shadow-lg ${
+          size === "wide" ? "max-w-4xl" : "max-w-lg"
+        }`}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2
             id="modal-title"

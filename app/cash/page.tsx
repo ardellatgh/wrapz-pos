@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { CashPageClient } from "@/components/pages/CashPageClient";
 
 export default function CashPage() {
-  return <PlaceholderPage title="Cash Control" stage="Stage 2" />;
+  return <CashPageClient />;
 }
