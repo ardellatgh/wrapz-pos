@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { KitchenPageClient } from "@/components/pages/KitchenPageClient";
 
 export default function KitchenPage() {
-  return <PlaceholderPage title="Kitchen / Serving Board" stage="Stage 5" />;
+  return <KitchenPageClient />;
 }

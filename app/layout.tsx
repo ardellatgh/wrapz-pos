@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Mono, DM_Serif_Display, Manrope } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
+import { KioskModeProvider } from "@/components/layout/KioskModeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
@@ -41,7 +42,9 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-brand-bg font-sans text-brand-text antialiased">
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          <KioskModeProvider>
+            <AppShell>{children}</AppShell>
+          </KioskModeProvider>
         </ToastProvider>
       </body>
     </html>

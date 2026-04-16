@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { useKioskMode } from "@/components/layout/KioskModeProvider";
 
 const navItems: { href: string; label: string }[] = [
   { href: "/dashboard", label: "Dashboard" },
@@ -20,10 +21,15 @@ const navItems: { href: string; label: string }[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { kiosk } = useKioskMode();
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-52 shrink-0 border-r border-brand-text/10 bg-white md:block">
+      <aside
+        className={`hidden w-52 shrink-0 border-r border-brand-text/10 bg-white md:block ${
+          kiosk ? "!hidden" : ""
+        }`}
+      >
         <div className="flex h-14 items-center border-b border-brand-text/10 px-4">
           <span className="font-display text-lg font-semibold tracking-tight text-brand-text">
             WRAPZ POS
@@ -52,7 +58,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b border-brand-text/10 bg-white px-4 md:px-6">
+        <header
+          className={`flex h-14 items-center justify-between border-b border-brand-text/10 bg-white px-4 md:px-6 ${
+            kiosk ? "hidden" : ""
+          }`}
+        >
           <div className="flex items-center gap-3">
             <span className="font-display text-lg font-semibold text-brand-text md:hidden">
               WRAPZ POS
@@ -61,7 +71,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="font-mono text-xs text-brand-text/50">Wisuda Apr 2026</div>
         </header>
 
-        <div className="border-b border-brand-text/10 bg-white px-2 py-2 md:hidden">
+        <div
+          className={`border-b border-brand-text/10 bg-white px-2 py-2 md:hidden ${
+            kiosk ? "hidden" : ""
+          }`}
+        >
           <nav className="flex gap-1 overflow-x-auto pb-1">
             {navItems.map((item) => {
               const active =
@@ -82,7 +96,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
 
-        <main className="flex-1 bg-brand-bg p-4 md:p-6">{children}</main>
+        <main
+          className={`flex-1 bg-brand-bg ${kiosk ? "min-h-0 flex-1 p-0 md:p-0" : "p-4 md:p-6"}`}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );
