@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +11,12 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import {
+  computeComboPricing,
+  type ComboCartLine,
+  type ComboPackageDef,
+  type GroupMembersMap,
+} from "@/lib/comboPricing";
 import { formatRupiah } from "@/lib/format";
 import { EVENT_SETTINGS_ROW_ID } from "@/lib/constants";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -33,6 +39,20 @@ type PresetRow = {
 };
 
 type DiscountMode = "none" | "preset" | "manual_percent" | "manual_fixed";
+
+const NEW_ORDER_DRAFT_KEY = "wrapz_new_order_draft_v1";
+
+type NewOrderDraftV1 = {
+  v: 1;
+  cartQty: Record<string, number>;
+  customerName: string;
+  orderNotes: string;
+  discountMode: DiscountMode;
+  presetId: string;
+  manualPercent: string;
+  manualFixed: string;
+  bestComboApplied: boolean;
+};
 
 type CartLine = { item: MenuRow; quantity: number };
 
@@ -137,6 +157,7 @@ export function NewOrderPageClient() {
 
   const [cartQty, setCartQty] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
   const [discountMode, setDiscountMode] = useState<DiscountMode>("none");
   const [presetId, setPresetId] = useState<string>("");
   const [manualPercent, setManualPercent] = useState("");
@@ -145,6 +166,16 @@ export function NewOrderPageClient() {
   const [stockModalOpen, setStockModalOpen] = useState(false);
   const [stockIssues, setStockIssues] = useState<StockIssue[]>([]);
   const [stockAckPhysical, setStockAckPhysical] = useState(false);
+
+  const [comboAutoApply, setComboAutoApply] = useState(true);
+  const [comboPackages, setComboPackages] = useState<ComboPackageDef[]>([]);
+  const [comboMembersByGroup, setComboMembersByGroup] = useState<GroupMembersMap>({});
+  const [comboRulesLoaded, setComboRulesLoaded] = useState(false);
+  const [comboFetchError, setComboFetchError] = useState<string | null>(null);
+  const [bestComboApplied, setBestComboApplied] = useState(false);
+  const [cardFlashId, setCardFlashId] = useState<string | null>(null);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const skipNextComboResetForCart = useRef(true);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -157,11 +188,79 @@ export function NewOrderPageClient() {
       const supabase = getSupabaseBrowserClient();
       const { data: settings } = await supabase
         .from("event_settings")
-        .select("default_low_stock_threshold")
+        .select("default_low_stock_threshold, combo_auto_apply")
         .eq("id", EVENT_SETTINGS_ROW_ID)
         .maybeSingle();
       if (settings?.default_low_stock_threshold != null) {
         setDefaultLow(Number(settings.default_low_stock_threshold));
+      }
+      if (settings && typeof settings.combo_auto_apply === "boolean") {
+        setComboAutoApply(settings.combo_auto_apply);
+      } else {
+        setComboAutoApply(true);
+      }
+
+      try {
+        const { data: pkgRows, error: pkgErr } = await supabase
+          .from("combo_packages")
+          .select("id, name, package_price, priority, is_active, is_configured");
+        if (pkgErr) throw pkgErr;
+        const { data: slotRows, error: slErr } = await supabase
+          .from("combo_package_slots")
+          .select("package_id, group_id, quantity, sort_order")
+          .order("sort_order", { ascending: true });
+        if (slErr) throw slErr;
+        const { data: memRows, error: memErr } = await supabase
+          .from("combo_group_members")
+          .select("group_id, menu_item_id");
+        if (memErr) throw memErr;
+
+        const slotsByPkg = new Map<string, { groupId: string; quantity: number; sortOrder: number }[]>();
+        for (const r of slotRows ?? []) {
+          const pid = r.package_id as string;
+          const arr = slotsByPkg.get(pid) ?? [];
+          arr.push({
+            groupId: r.group_id as string,
+            quantity: Number(r.quantity),
+            sortOrder: Number(r.sort_order),
+          });
+          slotsByPkg.set(pid, arr);
+        }
+
+        const members: GroupMembersMap = {};
+        for (const r of memRows ?? []) {
+          const gid = r.group_id as string;
+          const mid = r.menu_item_id as string;
+          if (!members[gid]) members[gid] = [];
+          members[gid].push(mid);
+        }
+        for (const k of Object.keys(members)) {
+          members[k].sort((a, b) => a.localeCompare(b));
+        }
+
+        const defs: ComboPackageDef[] = (pkgRows ?? []).map((r) => ({
+          id: r.id as string,
+          name: r.name as string,
+          packagePrice: Number(r.package_price),
+          priority: Number(r.priority),
+          isActive: Boolean(r.is_active),
+          isConfigured: Boolean(r.is_configured),
+          slots: (slotsByPkg.get(r.id as string) ?? []).map((s) => ({
+            groupId: s.groupId,
+            quantity: s.quantity,
+            sortOrder: s.sortOrder,
+          })),
+        }));
+
+        setComboPackages(defs);
+        setComboMembersByGroup(members);
+        setComboFetchError(null);
+        setComboRulesLoaded(true);
+      } catch (err) {
+        setComboPackages([]);
+        setComboMembersByGroup({});
+        setComboFetchError(err instanceof Error ? err.message : "Gagal memuat aturan combo");
+        setComboRulesLoaded(true);
       }
 
       const { data: menuData, error: menuErr } = await supabase
@@ -268,6 +367,79 @@ export function NewOrderPageClient() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(NEW_ORDER_DRAFT_KEY);
+      if (!raw) {
+        setDraftHydrated(true);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Partial<NewOrderDraftV1>;
+      if (parsed?.v !== 1) {
+        setDraftHydrated(true);
+        return;
+      }
+      if (parsed.cartQty && typeof parsed.cartQty === "object") setCartQty(parsed.cartQty);
+      if (typeof parsed.customerName === "string") setCustomerName(parsed.customerName);
+      if (typeof parsed.orderNotes === "string") setOrderNotes(parsed.orderNotes);
+      if (
+        parsed.discountMode === "none" ||
+        parsed.discountMode === "preset" ||
+        parsed.discountMode === "manual_percent" ||
+        parsed.discountMode === "manual_fixed"
+      ) {
+        setDiscountMode(parsed.discountMode);
+      }
+      if (typeof parsed.presetId === "string") setPresetId(parsed.presetId);
+      if (typeof parsed.manualPercent === "string") setManualPercent(parsed.manualPercent);
+      if (typeof parsed.manualFixed === "string") setManualFixed(parsed.manualFixed);
+      if (typeof parsed.bestComboApplied === "boolean") setBestComboApplied(parsed.bestComboApplied);
+    } catch {
+      /* ignore corrupt draft */
+    } finally {
+      setDraftHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydrated || typeof window === "undefined") return;
+    const draft: NewOrderDraftV1 = {
+      v: 1,
+      cartQty,
+      customerName,
+      orderNotes,
+      discountMode,
+      presetId,
+      manualPercent,
+      manualFixed,
+      bestComboApplied,
+    };
+    try {
+      localStorage.setItem(NEW_ORDER_DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* quota / private mode */
+    }
+  }, [
+    draftHydrated,
+    cartQty,
+    customerName,
+    orderNotes,
+    discountMode,
+    presetId,
+    manualPercent,
+    manualFixed,
+    bestComboApplied,
+  ]);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    if (skipNextComboResetForCart.current) {
+      skipNextComboResetForCart.current = false;
+      return;
+    }
+    setBestComboApplied(false);
+  }, [cartQty, draftHydrated]);
+
   const cartLines = useMemo((): CartLine[] => {
     const out: CartLine[] = [];
     for (const item of menu) {
@@ -281,6 +453,32 @@ export function NewOrderPageClient() {
     return cartLines.reduce((s, l) => s + l.item.price * l.quantity, 0);
   }, [cartLines]);
 
+  const comboCartLines = useMemo((): ComboCartLine[] => {
+    return cartLines.map((l) => ({
+      itemId: l.item.id,
+      itemName: l.item.name,
+      quantity: l.quantity,
+      unitPrice: l.item.price,
+      is_bundle: l.item.is_bundle,
+    }));
+  }, [cartLines]);
+
+  const comboPricingResult = useMemo(() => {
+    if (!comboRulesLoaded || comboPackages.length === 0) {
+      return { applications: [] as const, comboSavingsAmount: 0, snapshot: [] as const };
+    }
+    return computeComboPricing(comboCartLines, comboPackages, comboMembersByGroup);
+  }, [comboRulesLoaded, comboPackages, comboMembersByGroup, comboCartLines]);
+
+  const comboSavingsActive = comboAutoApply || bestComboApplied;
+  const comboSavingsAmount = comboSavingsActive ? comboPricingResult.comboSavingsAmount : 0;
+  const comboSnapshotPersist = comboSavingsActive ? comboPricingResult.snapshot : [];
+
+  const discountBase = useMemo(
+    () => Math.max(0, Math.round(subtotal - comboSavingsAmount)),
+    [subtotal, comboSavingsAmount]
+  );
+
   const selectedPreset = useMemo(
     () => presets.find((p) => p.id === presetId) ?? null,
     [presets, presetId]
@@ -290,31 +488,66 @@ export function NewOrderPageClient() {
     if (discountMode === "none") return 0;
     if (discountMode === "preset" && selectedPreset) {
       if (selectedPreset.discount_type === "percent") {
-        return Math.floor((selectedPreset.value / 100) * subtotal);
+        return Math.floor((selectedPreset.value / 100) * discountBase);
       }
-      return Math.min(subtotal, Math.round(selectedPreset.value));
+      return Math.min(discountBase, Math.round(selectedPreset.value));
     }
     if (discountMode === "manual_percent") {
       const p = Number.parseFloat(manualPercent);
       if (!Number.isFinite(p) || p <= 0) return 0;
       const clamped = Math.min(100, Math.max(0, p));
-      return Math.floor((clamped / 100) * subtotal);
+      return Math.floor((clamped / 100) * discountBase);
     }
     if (discountMode === "manual_fixed") {
       const digits = manualFixed.replace(/\D/g, "");
       const v = digits === "" ? 0 : Number.parseInt(digits, 10);
-      return Math.min(subtotal, v);
+      return Math.min(discountBase, v);
     }
     return 0;
-  }, [discountMode, selectedPreset, subtotal, manualPercent, manualFixed]);
+  }, [discountMode, selectedPreset, discountBase, manualPercent, manualFixed]);
 
   const totalAmount = useMemo(
-    () => Math.max(0, Math.round(subtotal - discountAmount)),
-    [subtotal, discountAmount]
+    () => Math.max(0, Math.round(subtotal - comboSavingsAmount - discountAmount)),
+    [subtotal, comboSavingsAmount, discountAmount]
   );
+
+  const potentialComboSavings = comboPricingResult.comboSavingsAmount;
+
+  const hasMatcherPackages = useMemo(
+    () =>
+      comboPackages.some((p) => p.isActive && p.isConfigured && p.slots.length > 0),
+    [comboPackages]
+  );
+
+  const subtotalAfterCombo = useMemo(
+    () => Math.max(0, Math.round(subtotal - comboSavingsAmount)),
+    [subtotal, comboSavingsAmount]
+  );
+
+  function addOneFromCard(id: string) {
+    setCardFlashId(id);
+    window.setTimeout(() => setCardFlashId((cur) => (cur === id ? null : cur)), 180);
+    setCartQty((q) => ({ ...q, [id]: (q[id] ?? 0) + 1 }));
+  }
 
   function addOne(id: string) {
     setCartQty((q) => ({ ...q, [id]: (q[id] ?? 0) + 1 }));
+  }
+
+  function clearDraft() {
+    setCartQty({});
+    setCustomerName("");
+    setOrderNotes("");
+    setDiscountMode("none");
+    setPresetId("");
+    setManualPercent("");
+    setManualFixed("");
+    setBestComboApplied(false);
+    try {
+      localStorage.removeItem(NEW_ORDER_DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 
   function deltaQty(id: string, delta: number) {
@@ -385,7 +618,11 @@ export function NewOrderPageClient() {
         .insert({
           queue_number: nextQueue,
           customer_name: customerName.trim() || null,
+          cashier_order_note: orderNotes.trim() || null,
           subtotal,
+          combo_savings_amount: comboSavingsAmount,
+          combo_snapshot:
+            comboSnapshotPersist.length > 0 ? (comboSnapshotPersist as unknown as object) : null,
           discount_type: discountMode,
           discount_preset_id: discountPresetId,
           discount_label: discountLabel,
@@ -414,6 +651,11 @@ export function NewOrderPageClient() {
       const { error: iErr } = await supabase.from("order_items").insert(itemRows);
       if (iErr) throw iErr;
 
+      try {
+        localStorage.removeItem(NEW_ORDER_DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
       showToast(`Order #${String(nextQueue).padStart(3, "0")} created.`);
       router.push(`/order/${orderId}/payment`);
     } catch (e) {
@@ -482,7 +724,12 @@ export function NewOrderPageClient() {
         <PageHeader
           eyebrow="Service"
           title="New order"
-          description="Tap + to add items. Queue number is assigned when you proceed to payment."
+          description="Tap a menu card to add items. Queue number is assigned when you proceed to payment."
+          actions={
+            <Button type="button" variant="secondary" className="min-h-[44px]" onClick={clearDraft}>
+              Clear
+            </Button>
+          }
         />
         {loadError && (
           <Card className="border-red-200 bg-red-50/80 p-3 text-sm text-red-800">{loadError}</Card>
@@ -502,39 +749,55 @@ export function NewOrderPageClient() {
                 item.low_stock_threshold != null ? item.low_stock_threshold : defaultLow;
               const low = !item.is_bundle && stock != null && stock > 0 && stock <= th;
               const out = !item.is_bundle && stock != null && stock <= 0;
+              const active = q > 0;
+              const flash = cardFlashId === item.id;
               return (
                 <li
                   key={item.id}
-                  className="relative flex flex-col overflow-hidden rounded-xl border border-brand-text/10 bg-white p-3 transition hover:border-brand-red/30 hover:shadow-card"
+                  className={`relative flex flex-col overflow-hidden rounded-xl border bg-white p-2 transition hover:shadow-card ${
+                    active
+                      ? "border-brand-yellow ring-2 ring-brand-yellow/90 ring-offset-1 ring-offset-white"
+                      : "border-brand-text/10 hover:border-brand-red/30"
+                  } ${flash ? "bg-brand-yellow-soft/70" : ""}`}
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl bg-brand-bg">
-                    {item.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.image_url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-brand-text/40">
-                        No image
-                      </div>
-                    )}
-                    {!item.is_bundle && (
-                      <div className="absolute right-2 top-2">
-                        {out ? (
-                          <Badge tone="danger">Out</Badge>
-                        ) : low ? (
-                          <Badge tone="warning">{stock} left</Badge>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm font-semibold leading-snug text-brand-text">{item.name}</p>
-                  <p className="mt-0.5 font-display text-base font-normal tabular-nums tracking-wide text-brand-text/70">
-                    {formatRupiah(item.price)}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="-m-0.5 mb-1 flex min-h-[120px] flex-col rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
+                    onClick={() => addOneFromCard(item.id)}
+                    aria-label={`Add one ${item.name}`}
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-brand-bg">
+                      {item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.image_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs text-brand-text/40">
+                          No image
+                        </div>
+                      )}
+                      {!item.is_bundle && (
+                        <div className="absolute right-1.5 top-1.5">
+                          {out ? (
+                            <Badge tone="danger">Out</Badge>
+                          ) : low ? (
+                            <Badge tone="warning">{stock} left</Badge>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-1.5 px-0.5 text-sm font-semibold leading-snug text-brand-text">{item.name}</p>
+                    <p className="mt-0.5 px-0.5 font-display text-base font-normal tabular-nums tracking-wide text-brand-text/70">
+                      {formatRupiah(item.price)}
+                    </p>
+                  </button>
+                  <div
+                    className="mt-1 flex items-center justify-between gap-2 border-t border-brand-text/8 pt-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button
                       type="button"
                       variant="secondary"
@@ -544,7 +807,11 @@ export function NewOrderPageClient() {
                     >
                       −
                     </Button>
-                    <span className="min-w-[2ch] text-center font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+                    <span
+                      className={`min-w-[2ch] text-center font-display text-lg font-normal tabular-nums tracking-wide ${
+                        flash ? "scale-110 font-semibold text-brand-red transition-transform" : "text-brand-text"
+                      }`}
+                    >
                       {q}
                     </span>
                     <Button type="button" className="px-2" onClick={() => addOne(item.id)}>
@@ -598,6 +865,98 @@ export function NewOrderPageClient() {
             </ul>
           )}
 
+          {comboFetchError ? (
+            <Card className="border-amber-300 bg-amber-50/90 p-3 text-xs text-amber-950">
+              <strong className="font-semibold">Aturan combo tidak dimuat.</strong> {comboFetchError}
+            </Card>
+          ) : null}
+
+          {comboRulesLoaded && hasMatcherPackages && cartLines.length > 0 ? (
+            <div className="rounded-lg border-2 border-brand-yellow/50 bg-brand-yellow-soft/60 p-3 text-sm shadow-sm">
+              <h3 className="font-display text-sm font-normal uppercase tracking-wide text-brand-text">
+                Combo & paket
+              </h3>
+              {comboSavingsActive && comboSavingsAmount > 0 ? (
+                <>
+                  <p className="mt-2 text-xs font-semibold text-brand-text/80">Combo aktif — diterapkan ke total</p>
+                  <ul className="mt-2 space-y-2">
+                    {comboPricingResult.snapshot.length > 0 ? (
+                      comboPricingResult.snapshot.map((row) => (
+                        <li
+                          key={row.package_id}
+                          className="rounded-md border border-brand-text/10 bg-white/90 px-2 py-2"
+                        >
+                          <div className="font-semibold text-brand-text">
+                            Paket {row.package_name}
+                            {row.count > 1 ? ` ×${row.count}` : ""} diterapkan
+                          </div>
+                          <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-brand-text/75">
+                            <span>
+                              Harga list {formatRupiah(row.list_value)} → paket {formatRupiah(row.package_value)}
+                            </span>
+                            <span className="font-semibold text-emerald-900">
+                              Hemat −{formatRupiah(Math.max(0, row.savings))}
+                            </span>
+                          </div>
+                          {row.allocations.length > 0 ? (
+                            <p className="mt-1 text-xs text-brand-text/55">
+                              {row.allocations
+                                .map((a) => `${a.quantity}× ${a.menu_item_name}`)
+                                .join(" · ")}
+                            </p>
+                          ) : null}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="rounded-md bg-white/90 px-2 py-2 text-brand-text">
+                        Hemat combo total:{" "}
+                        <span className="font-semibold text-emerald-900">
+                          −{formatRupiah(Math.max(0, comboSavingsAmount))}
+                        </span>
+                      </li>
+                    )}
+                  </ul>
+                  <p className="mt-2 text-xs text-brand-text/65">
+                    Total di bawah sudah memakai hemat combo (subtotal list tetap ditampilkan).
+                  </p>
+                </>
+              ) : potentialComboSavings > 0 ? (
+                <>
+                  <p className="mt-2 text-xs text-brand-text/80">
+                    Tersedia hemat combo sebesar{" "}
+                    <span className="font-semibold text-emerald-900">{formatRupiah(potentialComboSavings)}</span>
+                    {!comboAutoApply ? (
+                      <>
+                        . Tekan <strong>Terapkan combo terbaik</strong> untuk memakainya.
+                      </>
+                    ) : (
+                      <> — seharusnya otomatis aktif; periksa pengaturan paket di menu Combo.</>
+                    )}
+                  </p>
+                  {!comboAutoApply ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-3 w-full"
+                      onClick={() => setBestComboApplied(true)}
+                    >
+                      Terapkan combo terbaik
+                    </Button>
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-2 text-xs text-brand-text/70">
+                  Belum ada paket combo yang cocok dengan isi keranjang saat ini (cek kategori item & isi paket di
+                  pengaturan).
+                </p>
+              )}
+            </div>
+          ) : comboRulesLoaded && cartLines.length > 0 && !hasMatcherPackages ? (
+            <p className="text-xs text-brand-text/55">
+              Belum ada paket combo yang siap dipakai. Atur di <strong>Pengaturan → Combo</strong>.
+            </p>
+          ) : null}
+
           <hr className="border-brand-text/10" />
 
           <div>
@@ -609,6 +968,18 @@ export function NewOrderPageClient() {
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Guest"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="ord-notes">Notes (optional)</Label>
+            <Input
+              id="ord-notes"
+              className="mt-1"
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              placeholder="Allergies, pickup detail, etc."
+            />
+            <p className="mt-1 text-xs text-brand-text/50">Shown on the kitchen board with other cashier notes.</p>
           </div>
 
           <hr className="border-brand-text/10" />
@@ -693,15 +1064,37 @@ export function NewOrderPageClient() {
                 {formatRupiah(discountAmount)}
               </span>
             </p>
+            <p className="text-xs text-brand-text/55">
+              Diskon dihitung setelah hemat combo. Minimum belanja preset tetap memakai subtotal harga list (
+              {formatRupiah(subtotal)}).
+            </p>
           </div>
 
           <div className="space-y-1 border-t border-brand-text/10 pt-3 text-sm">
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>Subtotal (list)</span>
               <span className="font-sans tabular-nums">{formatRupiah(subtotal)}</span>
             </div>
+            {comboRulesLoaded && hasMatcherPackages && cartLines.length > 0 ? (
+              <>
+                <div className="flex justify-between text-emerald-900">
+                  <span>Hemat combo</span>
+                  <span className="font-sans tabular-nums">
+                    {comboSavingsAmount > 0 ? `−${formatRupiah(comboSavingsAmount)}` : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-dashed border-brand-text/15 pt-1 text-brand-text/85">
+                  <span>Setelah combo (sebelum diskon)</span>
+                  <span className="font-sans font-medium tabular-nums">{formatRupiah(subtotalAfterCombo)}</span>
+                </div>
+              </>
+            ) : null}
+            <div className="flex justify-between">
+              <span>Discount</span>
+              <span className="font-sans tabular-nums">−{formatRupiah(discountAmount)}</span>
+            </div>
             <div className="flex justify-between font-semibold">
-              <span>Total</span>
+              <span>Total dibayar</span>
               <span className="font-sans tabular-nums">{formatRupiah(totalAmount)}</span>
             </div>
           </div>

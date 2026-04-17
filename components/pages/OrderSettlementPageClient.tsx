@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -64,6 +64,7 @@ export function OrderSettlementPageClient() {
   const [submitting, setSubmitting] = useState(false);
   const [overrideLoading, setOverrideLoading] = useState(false);
   const [noCashSession, setNoCashSession] = useState(false);
+  const changePrefilledRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured() || !orderId) {
@@ -138,6 +139,11 @@ export function OrderSettlementPageClient() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    changePrefilledRef.current = false;
+    setAmountInput("");
+  }, [orderId]);
+
   const totals = useMemo(() => {
     if (!order || !payment) return null;
     const total = Math.round(order.total_amount);
@@ -151,6 +157,14 @@ export function OrderSettlementPageClient() {
     const diff = net - total;
     return { total, creditsIn, debitsOut, net, diff, remainingUnder: diff < 0 ? -diff : 0, changeOver: diff > 0 ? diff : 0 };
   }, [order, payment, settlements]);
+
+  useEffect(() => {
+    if (!totals) return;
+    if (totals.changeOver > 0 && totals.remainingUnder === 0 && !changePrefilledRef.current) {
+      setAmountInput(String(totals.changeOver));
+      changePrefilledRef.current = true;
+    }
+  }, [totals]);
 
   useEffect(() => {
     let cancelled = false;
@@ -549,16 +563,33 @@ export function OrderSettlementPageClient() {
       ) : (
         <Card className="space-y-4 p-4">
           <Label>Settlement method</Label>
-          <div className="flex flex-wrap gap-3 text-sm">
-            {(["cash", "qris", "transfer"] as const).map((m) => (
-              <label key={m} className="flex cursor-pointer items-center gap-2 capitalize">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {(
+              [
+                ["cash", "💵", "Tunai"],
+                ["qris", "🧾", "QRIS"],
+                ["transfer", "🏦", "Transfer"],
+              ] as const
+            ).map(([m, emoji, title]) => (
+              <label
+                key={m}
+                className={`flex cursor-pointer flex-col gap-1 rounded-lg border px-3 py-3 text-left shadow-card transition hover:border-brand-text/25 ${
+                  method === m
+                    ? "border-brand-red bg-brand-red/[0.08] ring-2 ring-brand-red/25"
+                    : "border-brand-text/12 bg-white"
+                }`}
+              >
                 <input
                   type="radio"
                   name="sm"
+                  className="sr-only"
                   checked={method === m}
                   onChange={() => setMethod(m)}
                 />
-                {m}
+                <span className="text-2xl leading-none" aria-hidden>
+                  {emoji}
+                </span>
+                <span className="text-sm font-semibold tracking-tight text-brand-text">{title}</span>
               </label>
             ))}
           </div>
@@ -574,6 +605,12 @@ export function OrderSettlementPageClient() {
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
             />
+            {changeOver > 0 && remainingUnder === 0 ? (
+              <p className="mt-1 text-xs text-brand-text/60">
+                Expected change: {formatRupiah(changeOver)}. Edit the amount if the customer actually received a
+                different value — mismatches post as settlement adjustments automatically.
+              </p>
+            ) : null}
           </div>
 
           <div>

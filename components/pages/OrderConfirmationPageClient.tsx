@@ -13,6 +13,9 @@ import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 type OrderRow = {
   queue_number: number;
   customer_name: string | null;
+  subtotal: number;
+  combo_savings_amount: number;
+  discount_amount: number;
   total_amount: number;
   payment_status: string;
 };
@@ -40,13 +43,19 @@ export function OrderConfirmationPageClient() {
       const supabase = getSupabaseBrowserClient();
       const { data: o, error: oErr } = await supabase
         .from("orders")
-        .select("queue_number, customer_name, total_amount, payment_status")
+        .select(
+          "queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status"
+        )
         .eq("id", orderId)
         .single();
       if (oErr) throw oErr;
       const ord: OrderRow = {
         queue_number: Number(o.queue_number),
         customer_name: (o.customer_name as string | null) ?? null,
+        subtotal: Number(o.subtotal),
+        combo_savings_amount:
+          o.combo_savings_amount != null ? Number(o.combo_savings_amount) : 0,
+        discount_amount: Number(o.discount_amount),
         total_amount: Number(o.total_amount),
         payment_status: o.payment_status as string,
       };
@@ -144,7 +153,25 @@ export function OrderConfirmationPageClient() {
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-between border-t border-brand-text/10 pt-3 text-base font-semibold">
+        <div className="mt-4 space-y-1 border-t border-brand-text/10 pt-3 text-sm">
+          <div className="flex justify-between text-brand-text/85">
+            <span>Subtotal (list)</span>
+            <span className="font-display tabular-nums">{formatRupiah(order.subtotal)}</span>
+          </div>
+          {order.combo_savings_amount !== 0 ? (
+            <div className="flex justify-between text-emerald-900">
+              <span>Combo package savings</span>
+              <span className="font-display tabular-nums">
+                −{formatRupiah(Math.max(0, order.combo_savings_amount))}
+              </span>
+            </div>
+          ) : null}
+          <div className="flex justify-between text-brand-text/85">
+            <span>Discount</span>
+            <span className="font-display tabular-nums">−{formatRupiah(order.discount_amount)}</span>
+          </div>
+        </div>
+        <div className="mt-3 flex justify-between text-base font-semibold">
           <span>Total paid</span>
           <span className="font-display text-2xl font-normal tabular-nums tracking-wide text-brand-red">
             {formatRupiah(order.total_amount)}

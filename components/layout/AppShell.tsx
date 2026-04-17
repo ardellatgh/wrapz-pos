@@ -23,6 +23,7 @@ const navGroups: NavGroup[] = [
     title: "Catalog & floor",
     items: [
       { href: "/menu", label: "Menu", icon: "📋" },
+      { href: "/settings/combo", label: "Combo", icon: "🎁" },
       { href: "/discounts", label: "Discounts", icon: "🏷️" },
       { href: "/stock", label: "Stock", icon: "📦" },
       { href: "/cash", label: "Cash", icon: "💵" },

@@ -49,6 +49,16 @@ function parsePositiveInt(raw: string): number | null {
   return n;
 }
 
+function stockMovementDirection(
+  quantityChange: number,
+  movementType: string
+): { dir: "in" | "out"; label: string } {
+  if (quantityChange > 0) return { dir: "in", label: "IN" };
+  if (quantityChange < 0) return { dir: "out", label: "OUT" };
+  if (movementType === "opening" || movementType === "refill") return { dir: "in", label: "IN" };
+  return { dir: "out", label: "OUT" };
+}
+
 export function StockPageClient() {
   const { showToast } = useToast();
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -256,7 +266,13 @@ export function StockPageClient() {
         <Button type="button" variant="secondary" onClick={() => openBulkModal("refill")}>
           Add refill
         </Button>
-        <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-[44px] border border-brand-text/12 shadow-card"
+          onClick={() => void load()}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>
@@ -335,6 +351,7 @@ export function StockPageClient() {
           <Table className="mt-3">
             <thead>
               <tr>
+                <Th className="w-14"> </Th>
                 <Th>Waktu</Th>
                 <Th>Item</Th>
                 <Th>Type</Th>
@@ -343,19 +360,41 @@ export function StockPageClient() {
               </tr>
             </thead>
             <tbody>
-              {logRows.map((r) => (
-                <tr key={r.id}>
-                  <Td className="whitespace-nowrap font-sans tabular-nums text-xs text-brand-text/80">
-                    {formatDateTime(r.created_at)}
-                  </Td>
-                  <Td>{r.menu_items?.name ?? "—"}</Td>
-                  <Td className="capitalize">{r.movement_type}</Td>
-                  <Td className="text-right font-sans tabular-nums">
-                    {r.quantity_change > 0 ? `+${r.quantity_change}` : r.quantity_change}
-                  </Td>
-                  <Td className="text-brand-text/70">{r.notes ?? "—"}</Td>
-                </tr>
-              ))}
+              {logRows.map((r) => {
+                const { dir, label } = stockMovementDirection(r.quantity_change, r.movement_type);
+                const rowClass =
+                  dir === "in"
+                    ? "border-l-4 border-l-emerald-500/90 bg-emerald-50/40"
+                    : "border-l-4 border-l-red-500/85 bg-red-50/35";
+                return (
+                  <tr key={r.id} className={rowClass}>
+                    <Td className="align-middle">
+                      <span
+                        className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          dir === "in"
+                            ? "bg-emerald-600/15 text-emerald-900 ring-1 ring-emerald-600/25"
+                            : "bg-red-600/12 text-red-900 ring-1 ring-red-600/25"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap font-sans tabular-nums text-xs text-brand-text/80">
+                      {formatDateTime(r.created_at)}
+                    </Td>
+                    <Td className="font-medium">{r.menu_items?.name ?? "—"}</Td>
+                    <Td className="text-xs capitalize text-brand-text/75">{r.movement_type}</Td>
+                    <Td
+                      className={`text-right font-sans text-sm font-semibold tabular-nums ${
+                        dir === "in" ? "text-emerald-900" : "text-red-900"
+                      }`}
+                    >
+                      {r.quantity_change > 0 ? `+${r.quantity_change}` : r.quantity_change}
+                    </Td>
+                    <Td className="text-xs text-brand-text/70">{r.notes ?? "—"}</Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         )}

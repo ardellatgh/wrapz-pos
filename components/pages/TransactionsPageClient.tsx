@@ -16,6 +16,7 @@ type OrderRow = {
   queue_number: number;
   customer_name: string | null;
   subtotal: number;
+  combo_savings_amount: number;
   discount_amount: number;
   total_amount: number;
   payment_status: string;
@@ -71,6 +72,10 @@ function methodChain(payment: PaymentRow | null, settlements: SettlementRow[]): 
   return seq.join(" → ");
 }
 
+function orderNeedsSettlement(order: OrderRow): boolean {
+  return order.payment_status === "partially_paid";
+}
+
 function settlementStatusText(
   order: OrderRow,
   payment: PaymentRow | null,
@@ -120,7 +125,7 @@ export function TransactionsPageClient() {
       const { data: ordData, error: oErr } = await supabase
         .from("orders")
         .select(
-          "id, queue_number, customer_name, subtotal, discount_amount, total_amount, payment_status, payment_notes, settlement_notes, created_at"
+          "id, queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status, payment_notes, settlement_notes, created_at"
         )
         .order("created_at", { ascending: false });
       if (oErr) throw oErr;
@@ -129,6 +134,8 @@ export function TransactionsPageClient() {
         queue_number: Number(r.queue_number),
         customer_name: (r.customer_name as string | null) ?? null,
         subtotal: Number(r.subtotal),
+        combo_savings_amount:
+          r.combo_savings_amount != null ? Number(r.combo_savings_amount) : 0,
         discount_amount: Number(r.discount_amount),
         total_amount: Number(r.total_amount),
         payment_status: r.payment_status as string,
@@ -281,6 +288,7 @@ export function TransactionsPageClient() {
                   <Th className="bg-brand-bg/95">Method</Th>
                   <Th className="bg-brand-bg/95">Status</Th>
                   <Th className="bg-brand-bg/95">Settlement</Th>
+                  <Th className="whitespace-nowrap bg-brand-bg/95">Settle</Th>
                   <Th className="bg-brand-bg/95">Notes</Th>
                 </tr>
               </thead>
@@ -326,6 +334,18 @@ export function TransactionsPageClient() {
                         <Td className="align-top text-xs text-brand-text/75">
                           {settlementStatusText(o, pay, settles)}
                         </Td>
+                        <Td className="align-top whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {orderNeedsSettlement(o) ? (
+                            <Link
+                              href={`/order/${o.id}/settlement`}
+                              className="inline-flex min-h-[36px] items-center justify-center rounded-ref-sm border border-brand-red/25 bg-brand-red/10 px-2.5 py-1 text-xs font-semibold text-brand-red shadow-sm transition hover:bg-brand-red/15"
+                            >
+                              Settle Now
+                            </Link>
+                          ) : (
+                            <span className="text-brand-text/35">—</span>
+                          )}
+                        </Td>
                         <Td className="align-top" onClick={(e) => e.stopPropagation()}>
                           {hasNotes(o) ? (
                             <Button
@@ -343,7 +363,7 @@ export function TransactionsPageClient() {
                       </tr>
                       {expanded && (
                         <tr className="bg-brand-bg/60">
-                          <Td colSpan={11} className="p-4">
+                          <Td colSpan={12} className="p-4">
                             <DetailPanel
                               order={o}
                               items={items}
@@ -387,6 +407,32 @@ function DetailPanel({
       <h3 className="font-sans text-base font-semibold tracking-tight text-brand-text">
         Order #{formatQueueNumber(order.queue_number)}
       </h3>
+      <div className="mt-3 rounded-lg border border-brand-text/10 bg-brand-bg/30 px-3 py-2 text-sm">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-brand-text/50">Pricing</h4>
+        <div className="mt-2 space-y-1">
+          <div className="flex justify-between">
+            <span className="text-brand-text/80">Subtotal (list)</span>
+            <span className="font-sans tabular-nums">{formatRupiah(order.subtotal)}</span>
+          </div>
+          {order.combo_savings_amount !== 0 ? (
+            <div className="flex justify-between text-emerald-900">
+              <span>Combo savings</span>
+              <span className="font-sans tabular-nums">
+                −{formatRupiah(Math.max(0, order.combo_savings_amount))}
+              </span>
+            </div>
+          ) : null}
+          <div className="flex justify-between">
+            <span className="text-brand-text/80">Discount</span>
+            <span className="font-sans tabular-nums">−{formatRupiah(order.discount_amount)}</span>
+          </div>
+          <div className="flex justify-between border-t border-brand-text/10 pt-1 font-semibold">
+            <span>Total</span>
+            <span className="font-sans tabular-nums">{formatRupiah(order.total_amount)}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-3">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-brand-text/50">
           Line items

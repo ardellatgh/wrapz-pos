@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -24,6 +24,7 @@ type OrderRow = {
   queue_number: number;
   customer_name: string | null;
   subtotal: number;
+  combo_savings_amount: number;
   discount_amount: number;
   total_amount: number;
   payment_status: string;
@@ -59,6 +60,8 @@ export function OrderPaymentPageClient() {
   const [paymentNotes, setPaymentNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [noCashSession, setNoCashSession] = useState(false);
+  const [cashTenderInput, setCashTenderInput] = useState("");
+  const prevMethodRef = useRef<PayMethod | null>(null);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured() || !orderId) {
@@ -72,22 +75,26 @@ export function OrderPaymentPageClient() {
       const { data: o, error: oErr } = await supabase
         .from("orders")
         .select(
-          "id, queue_number, customer_name, subtotal, discount_amount, total_amount, payment_status"
+          "id, queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status"
         )
         .eq("id", orderId)
         .single();
       if (oErr) throw oErr;
       if (!o) throw new Error("Order not found");
+      const comboSav =
+        o.combo_savings_amount != null ? Number(o.combo_savings_amount) : 0;
       const ord: OrderRow = {
         id: o.id as string,
         queue_number: Number(o.queue_number),
         customer_name: (o.customer_name as string | null) ?? null,
         subtotal: Number(o.subtotal),
+        combo_savings_amount: comboSav,
         discount_amount: Number(o.discount_amount),
         total_amount: Number(o.total_amount),
         payment_status: o.payment_status as string,
       };
       setOrder(ord);
+      setCashTenderInput("");
 
       const { data: li, error: lErr } = await supabase
         .from("order_items")
@@ -131,8 +138,17 @@ export function OrderPaymentPageClient() {
 
   useEffect(() => {
     if (!order) return;
+    if (method === "cash" && prevMethodRef.current != null && prevMethodRef.current !== "cash") {
+      setCashTenderInput("");
+    }
+    prevMethodRef.current = method;
+  }, [method, order]);
+
+  useEffect(() => {
+    if (!order) return;
+    if (method === "cash") return;
     if (exactSelected) setAmountInput(String(Math.round(order.total_amount)));
-  }, [order, exactSelected]);
+  }, [order, exactSelected, method]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +170,22 @@ export function OrderPaymentPageClient() {
       cancelled = true;
     };
   }, [method]);
+
+  const cashTendered = useMemo(() => parseRp(cashTenderInput), [cashTenderInput]);
+  const cashChangeDue = useMemo(() => {
+    if (!order || method !== "cash") return 0;
+    const t = Math.round(order.total_amount);
+    return Math.max(0, cashTendered - t);
+  }, [order, method, cashTendered]);
+  const cashStillDue = useMemo(() => {
+    if (!order || method !== "cash") return 0;
+    const t = Math.round(order.total_amount);
+    return Math.max(0, t - cashTendered);
+  }, [order, method, cashTendered]);
+
+  function addCashTender(delta: number) {
+    setCashTenderInput(String(Math.max(0, parseRp(cashTenderInput) + delta)));
+  }
 
   async function onConfirm() {
     if (!order || !isSupabaseConfigured()) return;
@@ -192,7 +224,8 @@ export function OrderPaymentPageClient() {
       return;
     }
 
-    const tendered = exactSelected ? total : parseRp(amountInput);
+    const tendered =
+      method === "cash" ? parseRp(cashTenderInput) : exactSelected ? total : parseRp(amountInput);
     if (tendered <= 0) {
       showToast("Enter an amount greater than zero.", "error");
       return;
@@ -401,9 +434,17 @@ export function OrderPaymentPageClient() {
         </Table>
         <div className="mt-3 space-y-1 border-t border-brand-text/10 pt-3 text-sm">
           <div className="flex justify-between">
-            <span>Subtotal</span>
+            <span>Subtotal (list)</span>
             <span className="font-display text-lg font-normal tabular-nums tracking-wide">{formatRupiah(order.subtotal)}</span>
           </div>
+          {order.combo_savings_amount !== 0 ? (
+            <div className="flex justify-between text-emerald-900">
+              <span>Combo package savings</span>
+              <span className="font-display text-lg font-normal tabular-nums tracking-wide">
+                −{formatRupiah(Math.max(0, order.combo_savings_amount))}
+              </span>
+            </div>
+          ) : null}
           <div className="flex justify-between">
             <span>Discount</span>
             <span className="font-display text-lg font-normal tabular-nums tracking-wide">
@@ -445,11 +486,11 @@ export function OrderPaymentPageClient() {
           )}
 
           <Card className="space-y-4 p-4">
-            <Label>Payment method</Label>
+            <Label>Metode pembayaran</Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {(
                 [
-                  ["cash", "💵", "Cash"],
+                  ["cash", "💵", "Tunai"],
                   ["qris", "🧾", "QRIS"],
                   ["transfer", "🏦", "Transfer"],
                 ] as const
@@ -478,36 +519,112 @@ export function OrderPaymentPageClient() {
             </div>
 
             <div className="space-y-2">
-              <Label>Amount</Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant={exactSelected ? "primary" : "secondary"}
-                  onClick={() => setExactSelected(true)}
-                >
-                  Exact amount
-                </Button>
-                <Button
-                  type="button"
-                  variant={!exactSelected ? "primary" : "secondary"}
-                  onClick={() => setExactSelected(false)}
-                >
-                  Enter amount
-                </Button>
-              </div>
-              {!exactSelected && (
-                <Input
-                  inputMode="numeric"
-                  className="mt-2 font-sans tabular-nums"
-                  value={amountInput}
-                  onChange={(e) => setAmountInput(e.target.value)}
-                  placeholder="Rp"
-                />
-              )}
-              {exactSelected && (
-                <p className="font-display text-2xl font-normal tabular-nums tracking-wide text-brand-text">
-                  {formatRupiah(total)}
-                </p>
+              {method === "cash" ? (
+                <div className="space-y-4 rounded-lg border border-brand-text/10 bg-brand-fill/50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-text/55">
+                    Pembayaran tunai
+                  </p>
+                  <div>
+                    <Label className="text-sm text-brand-text/80">Tambah cepat</Label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button type="button" variant="secondary" onClick={() => addCashTender(20_000)}>
+                        +20k
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => addCashTender(50_000)}>
+                        +50k
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => addCashTender(100_000)}>
+                        +100k
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setCashTenderInput(String(total))}
+                      >
+                        Uang pas (total)
+                      </Button>
+                      <Button type="button" variant="ghost" className="text-xs text-brand-text/55" onClick={() => setCashTenderInput("")}>
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="cash-tender-input" className="text-sm text-brand-text/80">
+                      Nominal diterima
+                    </Label>
+                    <Input
+                      id="cash-tender-input"
+                      inputMode="numeric"
+                      className="mt-2 font-sans tabular-nums"
+                      value={cashTenderInput}
+                      onChange={(e) => setCashTenderInput(e.target.value)}
+                      placeholder="Kosong — isi atau tumpuk cepat"
+                      aria-label="Nominal tunai yang diterima"
+                    />
+                    <p className="mt-1 text-xs text-brand-text/50">Mulai kosong; tombol cepat menumpuk dari nol. Pakai Uang pas untuk total persis.</p>
+                  </div>
+                  <div className="space-y-2 rounded-md border border-brand-text/10 bg-white px-3 py-3 text-sm shadow-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-brand-text/75">Terima</span>
+                      <span className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
+                        {formatRupiah(cashTendered)}
+                      </span>
+                    </div>
+                    {cashStillDue > 0 ? (
+                      <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-medium text-amber-900">
+                        <span>Kurang bayar</span>
+                        <span className="font-display text-lg font-normal tabular-nums">
+                          {formatRupiah(cashStillDue)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-medium text-emerald-900">
+                        <span>Kembalian (estimasi)</span>
+                        <span className="font-display text-lg font-normal tabular-nums">
+                          {formatRupiah(cashChangeDue)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs leading-relaxed text-brand-text/55">
+                    Jika uang kembali yang diberikan berbeda, catat di halaman settlement — penyesuaian memakai alur yang
+                    sama seperti sebelumnya.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Label>Nominal pembayaran</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant={exactSelected ? "primary" : "secondary"}
+                      onClick={() => setExactSelected(true)}
+                    >
+                      Exact amount
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={!exactSelected ? "primary" : "secondary"}
+                      onClick={() => setExactSelected(false)}
+                    >
+                      Enter amount
+                    </Button>
+                  </div>
+                  {!exactSelected && (
+                    <Input
+                      inputMode="numeric"
+                      className="mt-2 font-sans tabular-nums"
+                      value={amountInput}
+                      onChange={(e) => setAmountInput(e.target.value)}
+                      placeholder="Rp"
+                    />
+                  )}
+                  {exactSelected && (
+                    <p className="font-display text-2xl font-normal tabular-nums tracking-wide text-brand-text">
+                      {formatRupiah(total)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
@@ -209,6 +210,18 @@ export function SettingsPageClient() {
             </Button>
           </form>
         )}
+      </Card>
+
+      <Card className="p-4">
+        <h2 className="font-sans text-base font-semibold text-brand-text">Paket & kategori combo</h2>
+        <p className="mt-1 text-sm text-brand-text/75">
+          Atur kategori item combo, paket harga, dan apakah combo diterapkan otomatis di kasir.
+        </p>
+        <Link href="/settings/combo" className="mt-3 inline-block">
+          <Button type="button" variant="secondary">
+            Buka pengaturan combo
+          </Button>
+        </Link>
       </Card>
     </div>
   );

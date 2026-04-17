@@ -51,6 +51,7 @@ type KitchenOrder = {
   served_at: string | null;
   payment_notes: string | null;
   settlement_notes: string | null;
+  cashier_order_note: string | null;
   kitchen_operational_note: string | null;
   payment_method: string | null;
   confirmed_at: string | null;
@@ -240,6 +241,7 @@ function mapRowToKitchenOrder(
     served_at: (r.served_at as string | null) ?? null,
     payment_notes: (r.payment_notes as string | null) ?? null,
     settlement_notes: (r.settlement_notes as string | null) ?? null,
+    cashier_order_note: (r.cashier_order_note as string | null) ?? null,
     kitchen_operational_note: (r.kitchen_operational_note as string | null) ?? null,
     payment_method,
     confirmed_at,
@@ -276,7 +278,7 @@ export function KitchenPageClient() {
       const { data: ordRows, error: oErr } = await supabase
         .from("orders")
         .select(
-          "id, queue_number, customer_name, serving_status, created_at, updated_at, served_at, payment_notes, settlement_notes, kitchen_operational_note, payments(method, created_at), settlements(created_at)"
+          "id, queue_number, customer_name, serving_status, created_at, updated_at, served_at, payment_notes, settlement_notes, cashier_order_note, kitchen_operational_note, payments(method, created_at), settlements(created_at)"
         )
         .neq("serving_status", "not_sent")
         .order("created_at", { ascending: true });
@@ -554,7 +556,7 @@ export function KitchenPageClient() {
     }
   }
 
-  async function saveKitchenNote(orderId: string, text: string) {
+  async function saveKitchenNote(orderId: string, text: string): Promise<void> {
     const trimmed = text.trim();
     const value = trimmed.length > 0 ? trimmed : null;
     const supabase = getSupabaseBrowserClient();
@@ -572,6 +574,7 @@ export function KitchenPageClient() {
     if (error) {
       setOrders(prevSnapshot);
       showToast(error.message || "Could not save note");
+      throw new Error(error.message);
     }
   }
 
@@ -676,7 +679,7 @@ export function KitchenPageClient() {
                       onToggleLine={(line) => void toggleLineChecked(line)}
                       onToggleBundleComponent={(line, cid) => void toggleBundleComponent(line, cid)}
                       onMoveBack={() => onMoveBack(order.id, col.key)}
-                      onSaveNote={(text) => void saveKitchenNote(order.id, text)}
+                      onSaveNote={(text) => saveKitchenNote(order.id, text)}
                     />
                   ))}
                   {list.length === 0 && (
@@ -691,9 +694,6 @@ export function KitchenPageClient() {
     </div>
   );
 }
-
-const noteTextareaClass =
-  "w-full resize-y rounded-ref-sm border border-brand-text/8 bg-brand-fill px-1 py-0.5 text-[10px] leading-tight text-brand-text/75 shadow-none outline-none transition placeholder:text-brand-text/35 focus:border-brand-yellow/60 focus:ring-1 focus:ring-brand-yellow/20";
 
 function KitchenOrderCard({
   order,
@@ -718,7 +718,7 @@ function KitchenOrderCard({
   onToggleLine: (line: KitchenLine) => void;
   onToggleBundleComponent: (line: KitchenLine, componentId: string) => void;
   onMoveBack: () => void;
-  onSaveNote: (text: string) => void;
+  onSaveNote: (text: string) => Promise<void>;
 }) {
   const allChecked = order.items.length > 0 && order.items.every(lineKitchenComplete);
   const progress = useMemo(() => checklistProgress(order), [order]);
@@ -732,12 +732,53 @@ function KitchenOrderCard({
   const showMoveBack = previousBoardStatus(column) != null;
 
   const [noteDraft, setNoteDraft] = useState(order.kitchen_operational_note ?? "");
+  const [noteSaveUi, setNoteSaveUi] = useState<"idle" | "saving" | "saved">("idle");
+  const noteDebounceRef = useRef<number | null>(null);
+  const onSaveRef = useRef(onSaveNote);
+  onSaveRef.current = onSaveNote;
+
   useEffect(() => {
     setNoteDraft(order.kitchen_operational_note ?? "");
   }, [order.id, order.kitchen_operational_note]);
 
+  useEffect(() => {
+    const server = (order.kitchen_operational_note ?? "").trim();
+    const local = noteDraft.trim();
+    if (local === server) return;
+    if (noteDebounceRef.current != null) window.clearTimeout(noteDebounceRef.current);
+    noteDebounceRef.current = window.setTimeout(() => {
+      noteDebounceRef.current = null;
+      void (async () => {
+        setNoteSaveUi("saving");
+        try {
+          await onSaveRef.current(noteDraft);
+          setNoteSaveUi("saved");
+          window.setTimeout(() => setNoteSaveUi("idle"), 1400);
+        } catch {
+          setNoteSaveUi("idle");
+        }
+      })();
+    }, 700);
+    return () => {
+      if (noteDebounceRef.current != null) window.clearTimeout(noteDebounceRef.current);
+    };
+  }, [noteDraft, order.kitchen_operational_note, order.id]);
+
   const waitingLabel = formatWaitingShort(order.created_at, nowMs);
+  const waitMin = (nowMs - new Date(order.created_at).getTime()) / 60_000;
+  const waitUrgentClass =
+    waitMin > 10
+      ? "text-red-700"
+      : waitMin > 5
+        ? "text-amber-800"
+        : muted
+          ? "text-brand-text/50"
+          : "text-brand-text";
+  const waitBadgeClass =
+    waitMin > 10 ? "bg-red-50 ring-1 ring-red-200/80" : waitMin > 5 ? "bg-amber-50 ring-1 ring-amber-200/70" : "";
+
   const hasCashierNotes =
+    (order.cashier_order_note != null && order.cashier_order_note.trim().length > 0) ||
     (order.payment_notes != null && order.payment_notes.trim().length > 0) ||
     (order.settlement_notes != null && order.settlement_notes.trim().length > 0);
 
@@ -745,20 +786,26 @@ function KitchenOrderCard({
     <Card
       className={`flex flex-col gap-1.5 p-2 text-[11px] leading-snug ${muted ? "border-brand-text/10 bg-brand-bg/80" : "border-brand-text/12 bg-white"}`}
     >
-      <header className="space-y-0 border-b border-brand-text/10 pb-1.5">
+      <header className="space-y-1 border-b border-brand-text/10 pb-2">
         <p
-          className={`font-display text-2xl font-normal leading-none tracking-wide text-brand-red ${
+          className={`font-display text-3xl font-normal leading-none tracking-wide text-brand-red md:text-4xl ${
             muted ? "text-brand-text/40" : ""
           }`}
         >
           {queueLabel}
         </p>
-        <p className={`text-[11px] font-semibold leading-tight ${muted ? "text-brand-text/50" : "text-brand-text"}`}>
+        <p
+          className={`text-sm font-semibold leading-snug ${muted ? "text-brand-text/50" : "text-brand-text"}`}
+        >
           {displayName}
         </p>
-        <div className="flex flex-wrap items-baseline justify-between gap-x-2 pt-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-brand-text/45">Waiting</span>
-          <span className={`font-sans tabular-nums text-[11px] font-semibold ${muted ? "text-brand-text/50" : "text-brand-text"}`}>
+        <div
+          className={`flex flex-wrap items-center justify-between gap-x-2 rounded-md px-1.5 py-1 ${waitBadgeClass} ${muted ? "opacity-60" : ""}`}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-text/45">Waiting</span>
+          <span
+            className={`font-sans tabular-nums text-base font-bold tracking-tight ${waitUrgentClass} ${muted ? "!text-brand-text/45" : ""}`}
+          >
             {waitingLabel}
           </span>
         </div>
@@ -893,8 +940,14 @@ function KitchenOrderCard({
       </ul>
 
       {hasCashierNotes && (
-        <div className="space-y-0.5 rounded border border-brand-text/10 bg-white px-1.5 py-1 text-[10px] leading-snug">
-          <p className="font-medium uppercase tracking-wide text-brand-text/40">Cashier notes</p>
+        <div className="space-y-1 rounded border border-brand-text/10 bg-white px-2 py-1.5 text-[11px] leading-snug">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-text/40">Cashier notes</p>
+          {order.cashier_order_note != null && order.cashier_order_note.trim().length > 0 && (
+            <p className="text-brand-text/85">
+              <span className="text-brand-text/45">Order: </span>
+              {order.cashier_order_note.trim()}
+            </p>
+          )}
           {order.payment_notes != null && order.payment_notes.trim().length > 0 && (
             <p className="text-brand-text/75">
               <span className="text-brand-text/45">Payment: </span>
@@ -910,26 +963,25 @@ function KitchenOrderCard({
         </div>
       )}
 
-      <div className="space-y-0.5 rounded-ref-sm border border-dashed border-brand-text/8 bg-brand-fill/40 px-1 py-0.5">
-        <label className="text-[9px] font-semibold uppercase tracking-wide text-brand-text/35" htmlFor={`kn-${order.id}`}>
-          Note
-        </label>
+      <div className="rounded-ref-sm border border-brand-text/8 bg-brand-fill/30 px-1.5 py-1">
+        <div className="flex items-center justify-between gap-1">
+          <label className="text-[9px] font-medium uppercase tracking-wide text-brand-text/40" htmlFor={`kn-${order.id}`}>
+            Kitchen note
+          </label>
+          {noteSaveUi === "saving" ? (
+            <span className="text-[9px] text-brand-text/45">Saving…</span>
+          ) : noteSaveUi === "saved" ? (
+            <span className="text-[9px] text-emerald-700/90">Saved</span>
+          ) : null}
+        </div>
         <textarea
           id={`kn-${order.id}`}
-          rows={1}
+          rows={2}
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}
           placeholder="Optional"
-          className={noteTextareaClass}
+          className="mt-0.5 w-full resize-none rounded-ref-sm border border-brand-text/10 bg-white/90 px-1.5 py-1 text-[11px] leading-snug text-brand-text/85 shadow-none outline-none transition placeholder:text-brand-text/35 focus:border-brand-yellow/50 focus:ring-1 focus:ring-brand-yellow/15"
         />
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full min-h-[26px] px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-          onClick={() => onSaveNote(noteDraft)}
-        >
-          Save
-        </Button>
       </div>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-brand-text/10 pt-1.5">
