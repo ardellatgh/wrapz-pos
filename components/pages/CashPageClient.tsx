@@ -363,7 +363,13 @@ export function CashPageClient() {
       )}
 
       <div className="flex gap-2">
-        <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-10 border border-brand-text/12 bg-white shadow-card"
+          onClick={() => void load()}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>

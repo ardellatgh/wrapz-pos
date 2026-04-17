@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { formatQueueDisplay, formatRupiah } from "@/lib/format";
+import { clearNewOrderDraftCompletely } from "@/lib/newOrderDraft";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
 type OrderRow = {
@@ -80,6 +81,9 @@ export function OrderConfirmationPageClient() {
           line_total: Number(r.line_total),
         }))
       );
+      if (ord.payment_status === "paid") {
+        clearNewOrderDraftCompletely();
+      }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Failed to load");
     } finally {

@@ -12,6 +12,35 @@ import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
 const REFRESH_MS = 60_000;
 
+/** PostgREST caps rows per request (default 1000); paginate to aggregate all paid orders. */
+async function fetchAllPaidOrdersForAgg(
+  supabase: ReturnType<typeof getSupabaseBrowserClient>
+): Promise<{ id: string; subtotal: number; discount_amount: number }[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: { id: string; subtotal: number; discount_amount: number }[] = [];
+  for (;;) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, subtotal, discount_amount")
+      .eq("payment_status", "paid")
+      .order("created_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const chunk = data ?? [];
+    for (const r of chunk) {
+      all.push({
+        id: r.id as string,
+        subtotal: Number(r.subtotal),
+        discount_amount: Number(r.discount_amount),
+      });
+    }
+    if (chunk.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 function chunkIds(ids: string[], size: number): string[][] {
   const out: string[][] = [];
   for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
@@ -66,16 +95,8 @@ export function DashboardPageClient() {
     try {
       const supabase = getSupabaseBrowserClient();
 
-      const [
-        anyOrdersRes,
-        paidOrdersRes,
-        eventRes,
-        menuActiveRes,
-        openingStockRes,
-        cashOpenRes,
-      ] = await Promise.all([
+      const [anyOrdersRes, eventRes, menuActiveRes, openingStockRes, cashOpenRes] = await Promise.all([
         supabase.from("orders").select("id", { count: "exact", head: true }),
-        supabase.from("orders").select("id, subtotal, discount_amount").eq("payment_status", "paid"),
         supabase
           .from("event_settings")
           .select("event_name, target_revenue")
@@ -87,15 +108,14 @@ export function DashboardPageClient() {
       ]);
 
       if (anyOrdersRes.error) throw anyOrdersRes.error;
-      if (paidOrdersRes.error) throw paidOrdersRes.error;
       if (eventRes.error) throw eventRes.error;
       if (menuActiveRes.error) throw menuActiveRes.error;
       if (openingStockRes.error) throw openingStockRes.error;
       if (cashOpenRes.error) throw cashOpenRes.error;
 
       const anyOrdersCount = anyOrdersRes.count ?? 0;
-      const paidRows = paidOrdersRes.data ?? [];
-      const paidIds = paidRows.map((r) => r.id as string);
+      const paidRows = await fetchAllPaidOrdersForAgg(supabase);
+      const paidIds = paidRows.map((r) => r.id);
 
       let grossSales = 0;
       let discountTotal = 0;

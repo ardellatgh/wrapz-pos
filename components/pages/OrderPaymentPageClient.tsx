@@ -486,11 +486,11 @@ export function OrderPaymentPageClient() {
           )}
 
           <Card className="space-y-4 p-4">
-            <Label>Metode pembayaran</Label>
+            <Label>Payment method</Label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {(
                 [
-                  ["cash", "💵", "Tunai"],
+                  ["cash", "💵", "Cash"],
                   ["qris", "🧾", "QRIS"],
                   ["transfer", "🏦", "Transfer"],
                 ] as const
@@ -522,10 +522,10 @@ export function OrderPaymentPageClient() {
               {method === "cash" ? (
                 <div className="space-y-4 rounded-lg border border-brand-text/10 bg-brand-fill/50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-text/55">
-                    Pembayaran tunai
+                    Cash payment
                   </p>
                   <div>
-                    <Label className="text-sm text-brand-text/80">Tambah cepat</Label>
+                    <Label className="text-sm text-brand-text/80">Quick tender</Label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Button type="button" variant="secondary" onClick={() => addCashTender(20_000)}>
                         +20k
@@ -541,16 +541,21 @@ export function OrderPaymentPageClient() {
                         variant="secondary"
                         onClick={() => setCashTenderInput(String(total))}
                       >
-                        Uang pas (total)
+                        Exact total
                       </Button>
-                      <Button type="button" variant="ghost" className="text-xs text-brand-text/55" onClick={() => setCashTenderInput("")}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-h-9 border border-brand-text/15 bg-brand-yellow/12 px-3 py-1.5 text-xs text-brand-text shadow-sm hover:bg-brand-yellow/18"
+                        onClick={() => setCashTenderInput("")}
+                      >
                         Reset
                       </Button>
                     </div>
                   </div>
                   <div>
                     <Label htmlFor="cash-tender-input" className="text-sm text-brand-text/80">
-                      Nominal diterima
+                      Cash tendered
                     </Label>
                     <Input
                       id="cash-tender-input"
@@ -558,28 +563,30 @@ export function OrderPaymentPageClient() {
                       className="mt-2 font-sans tabular-nums"
                       value={cashTenderInput}
                       onChange={(e) => setCashTenderInput(e.target.value)}
-                      placeholder="Kosong — isi atau tumpuk cepat"
-                      aria-label="Nominal tunai yang diterima"
+                      placeholder="Empty — type or use quick tender"
+                      aria-label="Cash amount tendered"
                     />
-                    <p className="mt-1 text-xs text-brand-text/50">Mulai kosong; tombol cepat menumpuk dari nol. Pakai Uang pas untuk total persis.</p>
+                    <p className="mt-1 text-xs text-brand-text/50">
+                      Starts blank; quick buttons stack from zero. Use Exact total for the order total in one tap.
+                    </p>
                   </div>
                   <div className="space-y-2 rounded-md border border-brand-text/10 bg-white px-3 py-3 text-sm shadow-sm">
                     <div className="flex justify-between gap-4">
-                      <span className="text-brand-text/75">Terima</span>
+                      <span className="text-brand-text/75">Tendered</span>
                       <span className="font-display text-lg font-normal tabular-nums tracking-wide text-brand-text">
                         {formatRupiah(cashTendered)}
                       </span>
                     </div>
                     {cashStillDue > 0 ? (
                       <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-medium text-amber-900">
-                        <span>Kurang bayar</span>
+                        <span>Still due</span>
                         <span className="font-display text-lg font-normal tabular-nums">
                           {formatRupiah(cashStillDue)}
                         </span>
                       </div>
                     ) : (
                       <div className="flex justify-between gap-4 border-t border-brand-text/10 pt-2 font-medium text-emerald-900">
-                        <span>Kembalian (estimasi)</span>
+                        <span>Change (estimate)</span>
                         <span className="font-display text-lg font-normal tabular-nums">
                           {formatRupiah(cashChangeDue)}
                         </span>
@@ -587,13 +594,13 @@ export function OrderPaymentPageClient() {
                     )}
                   </div>
                   <p className="text-xs leading-relaxed text-brand-text/55">
-                    Jika uang kembali yang diberikan berbeda, catat di halaman settlement — penyesuaian memakai alur yang
-                    sama seperti sebelumnya.
+                    If the change handed to the customer differs, record it on Settlement — adjustments follow the same
+                    flow as before.
                   </p>
                 </div>
               ) : (
                 <>
-                  <Label>Nominal pembayaran</Label>
+                  <Label>Payment amount</Label>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"

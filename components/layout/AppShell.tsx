@@ -43,6 +43,19 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+function navItemIsActive(item: NavItem, pathname: string | null): boolean {
+  if (!pathname) return false;
+  if (item.href === "/settings") {
+    if (pathname === "/settings") return true;
+    if (pathname.startsWith("/settings/") && !pathname.startsWith("/settings/combo")) return true;
+    return false;
+  }
+  if (item.href === "/settings/combo") {
+    return pathname === "/settings/combo" || pathname.startsWith("/settings/combo/");
+  }
+  return pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href + "/"));
+}
+
 function NavLink({
   item,
   pathname,
@@ -52,8 +65,7 @@ function NavLink({
   pathname: string | null;
   onNavigate?: () => void;
 }) {
-  const active =
-    pathname === item.href || (item.href !== "/" && !!pathname?.startsWith(item.href + "/"));
+  const active = navItemIsActive(item, pathname);
   return (
     <Link
       href={item.href}

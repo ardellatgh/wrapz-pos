@@ -566,7 +566,7 @@ export function OrderSettlementPageClient() {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {(
               [
-                ["cash", "💵", "Tunai"],
+                ["cash", "💵", "Cash"],
                 ["qris", "🧾", "QRIS"],
                 ["transfer", "🏦", "Transfer"],
               ] as const

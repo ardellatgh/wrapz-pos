@@ -269,7 +269,7 @@ export function StockPageClient() {
         <Button
           type="button"
           variant="secondary"
-          className="min-h-[44px] border border-brand-text/12 shadow-card"
+          className="min-h-[44px] border border-brand-text/12 bg-white shadow-card"
           onClick={() => void load()}
           disabled={loading}
         >
@@ -352,7 +352,7 @@ export function StockPageClient() {
             <thead>
               <tr>
                 <Th className="w-14"> </Th>
-                <Th>Waktu</Th>
+                <Th>Time</Th>
                 <Th>Item</Th>
                 <Th>Type</Th>
                 <Th className="text-right">Qty</Th>

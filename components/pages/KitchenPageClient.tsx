@@ -278,13 +278,16 @@ export function KitchenPageClient() {
       const { data: ordRows, error: oErr } = await supabase
         .from("orders")
         .select(
-          "id, queue_number, customer_name, serving_status, created_at, updated_at, served_at, payment_notes, settlement_notes, cashier_order_note, kitchen_operational_note, payments(method, created_at), settlements(created_at)"
+          "id, queue_number, customer_name, serving_status, created_at, updated_at, served_at, payment_notes, settlement_notes, cashier_order_note, kitchen_operational_note, voided_at, payments(method, created_at), settlements(created_at)"
         )
         .neq("serving_status", "not_sent")
         .order("created_at", { ascending: true });
       if (oErr) throw oErr;
 
-      const raw = ordRows ?? [];
+      const raw = (ordRows ?? []).filter((row) => {
+        const v = (row as { voided_at?: string | null }).voided_at;
+        return v == null || v === "";
+      });
       const ids = raw.map((r) => r.id as string);
       let itemRows: Record<string, unknown>[] = [];
       if (ids.length > 0) {

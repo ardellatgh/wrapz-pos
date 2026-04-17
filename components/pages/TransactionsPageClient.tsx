@@ -6,6 +6,9 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Table, Td, Th } from "@/components/ui/Table";
 import { formatDateTime, formatQueueNumber, formatRupiah } from "@/lib/format";
@@ -23,6 +26,10 @@ type OrderRow = {
   payment_notes: string | null;
   settlement_notes: string | null;
   created_at: string;
+  operator_note: string | null;
+  operator_note_edited_at: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
 };
 
 type ItemRow = {
@@ -73,7 +80,51 @@ function methodChain(payment: PaymentRow | null, settlements: SettlementRow[]): 
 }
 
 function orderNeedsSettlement(order: OrderRow): boolean {
+  if (order.voided_at != null) return false;
   return order.payment_status === "partially_paid";
+}
+
+/** PostgREST returns at most ~1000 rows per request; page to load the full order list. */
+async function fetchAllOrdersForTransactions(
+  supabase: ReturnType<typeof getSupabaseBrowserClient>
+): Promise<OrderRow[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: OrderRow[] = [];
+  for (;;) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "id, queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status, payment_notes, settlement_notes, created_at, operator_note, operator_note_edited_at, voided_at, void_reason"
+      )
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const chunk = data ?? [];
+    for (const r of chunk) {
+      all.push({
+        id: r.id as string,
+        queue_number: Number(r.queue_number),
+        customer_name: (r.customer_name as string | null) ?? null,
+        subtotal: Number(r.subtotal),
+        combo_savings_amount:
+          r.combo_savings_amount != null ? Number(r.combo_savings_amount) : 0,
+        discount_amount: Number(r.discount_amount),
+        total_amount: Number(r.total_amount),
+        payment_status: r.payment_status as string,
+        payment_notes: (r.payment_notes as string | null) ?? null,
+        settlement_notes: (r.settlement_notes as string | null) ?? null,
+        created_at: r.created_at as string,
+        operator_note: (r.operator_note as string | null) ?? null,
+        operator_note_edited_at: (r.operator_note_edited_at as string | null) ?? null,
+        voided_at: (r.voided_at as string | null) ?? null,
+        void_reason: (r.void_reason as string | null) ?? null,
+      });
+    }
+    if (chunk.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
 }
 
 function settlementStatusText(
@@ -81,6 +132,7 @@ function settlementStatusText(
   payment: PaymentRow | null,
   settlements: SettlementRow[]
 ): string {
+  if (order.voided_at != null) return "Voided";
   if (order.payment_status === "pending") return "Pending";
   if (order.payment_status === "partially_paid") {
     return settlements.length > 0 ? "Partially settled" : "Awaiting settlement";
@@ -112,6 +164,9 @@ export function TransactionsPageClient() {
     {}
   );
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [voidTarget, setVoidTarget] = useState<OrderRow | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voiding, setVoiding] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -122,27 +177,7 @@ export function TransactionsPageClient() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { data: ordData, error: oErr } = await supabase
-        .from("orders")
-        .select(
-          "id, queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status, payment_notes, settlement_notes, created_at"
-        )
-        .order("created_at", { ascending: false });
-      if (oErr) throw oErr;
-      const ordRows: OrderRow[] = (ordData ?? []).map((r) => ({
-        id: r.id as string,
-        queue_number: Number(r.queue_number),
-        customer_name: (r.customer_name as string | null) ?? null,
-        subtotal: Number(r.subtotal),
-        combo_savings_amount:
-          r.combo_savings_amount != null ? Number(r.combo_savings_amount) : 0,
-        discount_amount: Number(r.discount_amount),
-        total_amount: Number(r.total_amount),
-        payment_status: r.payment_status as string,
-        payment_notes: (r.payment_notes as string | null) ?? null,
-        settlement_notes: (r.settlement_notes as string | null) ?? null,
-        created_at: r.created_at as string,
-      }));
+      const ordRows = await fetchAllOrdersForTransactions(supabase);
       setOrders(ordRows);
       const ids = ordRows.map((o) => o.id);
       if (ids.length === 0) {
@@ -246,9 +281,15 @@ export function TransactionsPageClient() {
       <PageHeader
         eyebrow="Orders"
         title="Transactions"
-        description="Read-only order log · Times in WIB (Asia/Jakarta)"
+        description="Order log with operator notes · Times in WIB (Asia/Jakarta)"
         actions={
-          <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-10 border border-brand-text/12 bg-white shadow-card"
+            onClick={() => void load()}
+            disabled={loading}
+          >
             Refresh
           </Button>
         }
@@ -287,6 +328,7 @@ export function TransactionsPageClient() {
                   <Th className="bg-brand-bg/95 text-right">Total</Th>
                   <Th className="bg-brand-bg/95">Method</Th>
                   <Th className="bg-brand-bg/95">Status</Th>
+                  <Th className="max-w-[120px] bg-brand-bg/95">Op. note</Th>
                   <Th className="bg-brand-bg/95">Settlement</Th>
                   <Th className="whitespace-nowrap bg-brand-bg/95">Settle</Th>
                   <Th className="bg-brand-bg/95">Notes</Th>
@@ -301,7 +343,9 @@ export function TransactionsPageClient() {
                   return (
                     <Fragment key={o.id}>
                       <tr
-                        className="cursor-pointer hover:bg-brand-bg/50"
+                        className={`cursor-pointer hover:bg-brand-bg/50 ${
+                          o.voided_at != null ? "bg-brand-text/[0.03] opacity-80" : ""
+                        }`}
                         onClick={() => setExpandedId(expanded ? null : o.id)}
                       >
                         <Td className="whitespace-nowrap align-top">
@@ -329,7 +373,12 @@ export function TransactionsPageClient() {
                         </Td>
                         <Td className="align-top text-xs">{methodChain(pay, settles)}</Td>
                         <Td className="align-top">
-                          <PaymentStatusBadge status={o.payment_status} />
+                          <PaymentStatusBadge status={o.payment_status} voidedAt={o.voided_at} />
+                        </Td>
+                        <Td className="max-w-[120px] align-top text-xs text-brand-text/75">
+                          <span className="line-clamp-2 break-words">
+                            {o.operator_note?.trim() || "—"}
+                          </span>
                         </Td>
                         <Td className="align-top text-xs text-brand-text/75">
                           {settlementStatusText(o, pay, settles)}
@@ -363,12 +412,19 @@ export function TransactionsPageClient() {
                       </tr>
                       {expanded && (
                         <tr className="bg-brand-bg/60">
-                          <Td colSpan={12} className="p-4">
+                          <Td colSpan={13} className="p-4">
                             <DetailPanel
                               order={o}
                               items={items}
                               payment={pay}
                               settlements={settles}
+                              onReload={async () => {
+                                await load();
+                              }}
+                              onRequestVoid={() => {
+                                setVoidReason("");
+                                setVoidTarget(o);
+                              }}
                             />
                           </Td>
                         </tr>
@@ -381,11 +437,81 @@ export function TransactionsPageClient() {
           </div>
         </div>
       )}
+
+      <Modal
+        open={voidTarget != null}
+        title="Void order (audit)"
+        onClose={() => !voiding && setVoidTarget(null)}
+      >
+        {voidTarget != null && (
+          <div className="space-y-3 text-sm text-brand-text">
+            <p>
+              This marks order{" "}
+              <strong className="font-sans tabular-nums">#{formatQueueNumber(voidTarget.queue_number)}</strong> as
+              voided. The row stays in the database for audit. Only unpaid pending orders can be voided here.
+            </p>
+            <div>
+              <Label htmlFor="void-reason-tx">Reason (required)</Label>
+              <Input
+                id="void-reason-tx"
+                className="mt-1"
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Short operational reason"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" disabled={voiding} onClick={() => setVoidTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                className="bg-brand-red hover:bg-brand-red/92"
+                disabled={voiding || voidReason.trim().length < 3}
+                onClick={async () => {
+                  if (!voidTarget || !isSupabaseConfigured()) return;
+                  setVoiding(true);
+                  try {
+                    const supabase = getSupabaseBrowserClient();
+                    const { data: payRow, error: pErr } = await supabase
+                      .from("payments")
+                      .select("id")
+                      .eq("order_id", voidTarget.id)
+                      .maybeSingle();
+                    if (pErr) throw pErr;
+                    if (payRow) throw new Error("Cannot void: a payment row already exists.");
+                    const { error } = await supabase
+                      .from("orders")
+                      .update({
+                        voided_at: new Date().toISOString(),
+                        void_reason: voidReason.trim(),
+                      })
+                      .eq("id", voidTarget.id)
+                      .eq("payment_status", "pending")
+                      .is("voided_at", null);
+                    if (error) throw error;
+                    setVoidTarget(null);
+                    await load();
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "Void failed");
+                  } finally {
+                    setVoiding(false);
+                  }
+                }}
+              >
+                {voiding ? "Voiding…" : "Confirm void"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
 
-function PaymentStatusBadge({ status }: { status: string }) {
+function PaymentStatusBadge({ status, voidedAt }: { status: string; voidedAt: string | null }) {
+  if (voidedAt != null) return <Badge tone="muted">Voided</Badge>;
   if (status === "paid") return <Badge tone="success">Paid</Badge>;
   if (status === "partially_paid") return <Badge tone="warning">Partial</Badge>;
   return <Badge tone="muted">Pending</Badge>;
@@ -396,17 +522,100 @@ function DetailPanel({
   items,
   payment,
   settlements,
+  onReload,
+  onRequestVoid,
 }: {
   order: OrderRow;
   items: ItemRow[];
   payment: PaymentRow | null;
   settlements: SettlementRow[];
+  onReload: () => Promise<void>;
+  onRequestVoid: () => void;
 }) {
+  const [opNote, setOpNote] = useState(order.operator_note ?? "");
+  const [savingNote, setSavingNote] = useState(false);
+
+  useEffect(() => {
+    setOpNote(order.operator_note ?? "");
+  }, [order.id, order.operator_note]);
+
+  const canVoidOrder =
+    order.voided_at == null && order.payment_status === "pending" && payment == null;
+
   return (
     <Card className="border border-brand-text/10 p-4 text-left shadow-none">
       <h3 className="font-sans text-base font-semibold tracking-tight text-brand-text">
         Order #{formatQueueNumber(order.queue_number)}
+        {order.voided_at != null ? (
+          <span className="ml-2 inline-block rounded-md bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-900">
+            Voided
+          </span>
+        ) : null}
       </h3>
+      {order.voided_at != null && order.void_reason?.trim() ? (
+        <p className="mt-2 rounded-md border border-red-200/70 bg-red-50/90 px-3 py-2 text-xs text-red-950">
+          Void reason: {order.void_reason.trim()}
+        </p>
+      ) : null}
+
+      <div className="mt-3 rounded-lg border border-brand-text/10 bg-white px-3 py-2">
+        <Label htmlFor={`op-note-${order.id}`} className="text-xs font-semibold uppercase tracking-wide text-brand-text/50">
+          Operator note
+        </Label>
+        <textarea
+          id={`op-note-${order.id}`}
+          className="mt-1 min-h-[52px] w-full resize-y rounded-ref-sm border border-brand-text/12 bg-brand-fill px-2 py-1.5 text-sm"
+          value={opNote}
+          disabled={order.voided_at != null}
+          onChange={(e) => setOpNote(e.target.value)}
+          rows={2}
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-9 text-xs"
+            disabled={savingNote || order.voided_at != null || opNote.trim() === (order.operator_note ?? "").trim()}
+            onClick={async () => {
+              if (!isSupabaseConfigured()) return;
+              setSavingNote(true);
+              try {
+                const supabase = getSupabaseBrowserClient();
+                const { error } = await supabase
+                  .from("orders")
+                  .update({
+                    operator_note: opNote.trim() || null,
+                    operator_note_edited_at: new Date().toISOString(),
+                  })
+                  .eq("id", order.id);
+                if (error) throw error;
+                await onReload();
+              } catch (e) {
+                alert(e instanceof Error ? e.message : "Save failed");
+              } finally {
+                setSavingNote(false);
+              }
+            }}
+          >
+            {savingNote ? "Saving…" : "Save note"}
+          </Button>
+          {order.operator_note_edited_at != null ? (
+            <span className="text-xs text-brand-text/50">
+              Last edited {formatDateTime(order.operator_note_edited_at)}
+            </span>
+          ) : null}
+          {canVoidOrder ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="ml-auto min-h-9 border border-red-200/80 bg-red-50 text-xs text-red-900 hover:bg-red-100"
+              onClick={onRequestVoid}
+            >
+              Void order…
+            </Button>
+          ) : null}
+        </div>
+      </div>
       <div className="mt-3 rounded-lg border border-brand-text/10 bg-brand-bg/30 px-3 py-2 text-sm">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-brand-text/50">Pricing</h4>
         <div className="mt-2 space-y-1">

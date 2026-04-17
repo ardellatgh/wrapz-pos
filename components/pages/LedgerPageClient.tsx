@@ -5,6 +5,9 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Table, Td, Th } from "@/components/ui/Table";
 import { formatDateTime, formatQueueNumber, formatRupiah } from "@/lib/format";
@@ -20,6 +23,10 @@ type LedgerRow = {
   notes: string | null;
   order_id: string | null;
   queue_number: number | null;
+  operator_note: string | null;
+  operator_note_edited_at: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
 };
 
 type PayMethod = "cash" | "qris" | "transfer";
@@ -101,6 +108,34 @@ function rowMatchesChannelFilter(ch: Channel, f: ChannelFilter): boolean {
   return ch === f;
 }
 
+/** Soft void is limited to non-order-payment rows to avoid silent money mismatches. */
+function ledgerEntryAllowsSoftVoid(entryType: string): boolean {
+  return entryType === "opening_cash" || entryType === "cash_refill";
+}
+
+async function fetchAllLedgerEntryRows(
+  supabase: ReturnType<typeof getSupabaseBrowserClient>
+): Promise<Record<string, unknown>[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: Record<string, unknown>[] = [];
+  for (;;) {
+    const { data, error } = await supabase
+      .from("ledger_entries")
+      .select(
+        "id, created_at, entry_type, direction, amount, notes, order_id, operator_note, operator_note_edited_at, voided_at, void_reason"
+      )
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const chunk = data ?? [];
+    all.push(...chunk);
+    if (chunk.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 type TotalsThree = { in: number; out: number; balance: number };
 
 function emptyTotals(): TotalsThree {
@@ -127,6 +162,12 @@ export function LedgerPageClient() {
   const [orderContext, setOrderContext] = useState<Record<string, OrderMoneyContext>>({});
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [noteModalRow, setNoteModalRow] = useState<LedgerRow | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingLedNote, setSavingLedNote] = useState(false);
+  const [voidModalRow, setVoidModalRow] = useState<LedgerRow | null>(null);
+  const [voidReasonLed, setVoidReasonLed] = useState("");
+  const [voidingLed, setVoidingLed] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -137,12 +178,7 @@ export function LedgerPageClient() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("ledger_entries")
-        .select("id, created_at, entry_type, direction, amount, notes, order_id")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const rawRows = (data ?? []) as Record<string, unknown>[];
+      const rawRows = await fetchAllLedgerEntryRows(supabase);
       const orderIds = [
         ...new Set(
           rawRows
@@ -215,6 +251,10 @@ export function LedgerPageClient() {
             notes: (rec.notes as string | null) ?? null,
             order_id: oid,
             queue_number: oid ? queueByOrderId[oid] ?? null : null,
+            operator_note: (rec.operator_note as string | null) ?? null,
+            operator_note_edited_at: (rec.operator_note_edited_at as string | null) ?? null,
+            voided_at: (rec.voided_at as string | null) ?? null,
+            void_reason: (rec.void_reason as string | null) ?? null,
           };
         })
       );
@@ -247,6 +287,7 @@ export function LedgerPageClient() {
   const selectedChannelTotals = useMemo(() => {
     const t = emptyTotals();
     for (const r of filteredRows) {
+      if (r.voided_at != null) continue;
       addSigned(t, r.direction, r.amount);
     }
     return t;
@@ -261,6 +302,7 @@ export function LedgerPageClient() {
     let cashInHand = 0;
 
     for (const r of full) {
+      if (r.voided_at != null) continue;
       const et = r.entry_type;
       const amt = r.amount;
       const isIn = r.direction === "in";
@@ -318,7 +360,13 @@ export function LedgerPageClient() {
         title="Ledger"
         description="Operational money log · Newest first · WIB (Asia/Jakarta)"
         actions={
-          <Button type="button" variant="ghost" onClick={() => void load()} disabled={loading}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-10 border border-brand-text/12 bg-white shadow-card"
+            onClick={() => void load()}
+            disabled={loading}
+          >
             Refresh
           </Button>
         }
@@ -470,7 +518,9 @@ export function LedgerPageClient() {
                   <Th className="bg-brand-bg/95">Direction</Th>
                   <Th className="bg-brand-bg/95 text-right">Amount</Th>
                   <Th className="bg-brand-bg/95">Queue</Th>
-                  <Th className="bg-brand-bg/95">Notes</Th>
+                  <Th className="max-w-[140px] bg-brand-bg/95">Op.</Th>
+                  <Th className="bg-brand-bg/95">System notes</Th>
+                  <Th className="whitespace-nowrap bg-brand-bg/95">Actions</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-text/5">
@@ -481,11 +531,16 @@ export function LedgerPageClient() {
                   const displayNote =
                     !showExpand || expanded ? note : `${note.slice(0, NOTE_PREVIEW)}…`;
                   return (
-                    <tr key={r.id} className="hover:bg-brand-bg/40">
+                    <tr
+                      key={r.id}
+                      className={`hover:bg-brand-bg/40 ${r.voided_at != null ? "bg-brand-text/[0.02]" : ""}`}
+                    >
                       <Td className="whitespace-nowrap font-sans tabular-nums text-xs text-brand-text/80">
                         {formatDateTime(r.created_at)}
                       </Td>
-                      <Td className="text-brand-text">{ledgerEntryTypeLabel(r.entry_type)}</Td>
+                      <Td className={`text-brand-text ${r.voided_at != null ? "text-brand-text/60" : ""}`}>
+                        {ledgerEntryTypeLabel(r.entry_type)}
+                      </Td>
                       <Td className="whitespace-nowrap text-sm text-brand-text/90">
                         {channelColumnLabel(r.channel)}
                       </Td>
@@ -498,7 +553,11 @@ export function LedgerPageClient() {
                           </span>
                         )}
                       </Td>
-                      <Td className="text-right font-sans tabular-nums text-sm font-medium tabular-nums">
+                      <Td
+                        className={`text-right font-sans text-sm font-medium tabular-nums ${
+                          r.voided_at != null ? "text-brand-text/45 line-through decoration-brand-text/40" : ""
+                        }`}
+                      >
                         {formatRupiah(r.amount)}
                       </Td>
                       <Td>
@@ -510,7 +569,23 @@ export function LedgerPageClient() {
                           <span className="text-brand-text/40">—</span>
                         )}
                       </Td>
-                      <Td className="max-w-[240px] text-xs text-brand-text/80">
+                      <Td className="max-w-[140px] align-top text-xs text-brand-text/80">
+                        <span className="line-clamp-3 break-words">{r.operator_note?.trim() || "—"}</span>
+                        {r.voided_at == null ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="mt-1 h-auto px-1 py-0 text-[11px] font-semibold text-brand-red underline"
+                            onClick={() => {
+                              setNoteModalRow(r);
+                              setNoteDraft(r.operator_note ?? "");
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        ) : null}
+                      </Td>
+                      <Td className="max-w-[200px] text-xs text-brand-text/80">
                         <span className="break-words">{displayNote || "—"}</span>
                         {showExpand && (
                           <Button
@@ -523,6 +598,32 @@ export function LedgerPageClient() {
                           </Button>
                         )}
                       </Td>
+                      <Td className="align-top text-xs">
+                        {r.voided_at != null ? (
+                          <div className="space-y-1">
+                            <Badge tone="muted">Voided</Badge>
+                            {r.void_reason?.trim() ? (
+                              <p className="max-w-[160px] text-[11px] leading-snug text-brand-text/55">
+                                {r.void_reason.trim()}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : ledgerEntryAllowsSoftVoid(r.entry_type) ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="min-h-8 border border-red-200/90 bg-red-50 px-2 py-1 text-[11px] text-red-900 hover:bg-red-100"
+                            onClick={() => {
+                              setVoidModalRow(r);
+                              setVoidReasonLed("");
+                            }}
+                          >
+                            Void…
+                          </Button>
+                        ) : (
+                          <span className="text-brand-text/35">—</span>
+                        )}
+                      </Td>
                     </tr>
                   );
                 })}
@@ -531,6 +632,117 @@ export function LedgerPageClient() {
           </div>
         </div>
       )}
+
+      <Modal
+        open={noteModalRow != null}
+        title="Operator note"
+        onClose={() => !savingLedNote && setNoteModalRow(null)}
+      >
+        {noteModalRow != null && (
+          <div className="space-y-3 text-sm">
+            <Label htmlFor="led-note">Note</Label>
+            <textarea
+              id="led-note"
+              className="mt-1 min-h-[80px] w-full rounded-ref-sm border border-brand-text/12 bg-brand-fill px-2 py-2 text-sm"
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" disabled={savingLedNote} onClick={() => setNoteModalRow(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={savingLedNote}
+                onClick={async () => {
+                  if (!noteModalRow || !isSupabaseConfigured()) return;
+                  setSavingLedNote(true);
+                  try {
+                    const supabase = getSupabaseBrowserClient();
+                    const { error } = await supabase
+                      .from("ledger_entries")
+                      .update({
+                        operator_note: noteDraft.trim() || null,
+                        operator_note_edited_at: new Date().toISOString(),
+                      })
+                      .eq("id", noteModalRow.id);
+                    if (error) throw error;
+                    setNoteModalRow(null);
+                    await load();
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "Save failed");
+                  } finally {
+                    setSavingLedNote(false);
+                  }
+                }}
+              >
+                {savingLedNote ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={voidModalRow != null}
+        title="Void ledger row (audit)"
+        onClose={() => !voidingLed && setVoidModalRow(null)}
+      >
+        {voidModalRow != null && (
+          <div className="space-y-3 text-sm text-brand-text">
+            <p>
+              Marks this row as void for totals and labels. The original amounts stay on the row for audit. This tool
+              is only offered for opening cash and drawer refills; it does not adjust linked cash session rows.
+            </p>
+            <div>
+              <Label htmlFor="led-void-reason">Reason (required)</Label>
+              <Input
+                id="led-void-reason"
+                className="mt-1"
+                value={voidReasonLed}
+                onChange={(e) => setVoidReasonLed(e.target.value)}
+                placeholder="Short operational reason"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" disabled={voidingLed} onClick={() => setVoidModalRow(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                className="bg-brand-red hover:bg-brand-red/92"
+                disabled={voidingLed || voidReasonLed.trim().length < 3}
+                onClick={async () => {
+                  if (!voidModalRow || !isSupabaseConfigured()) return;
+                  setVoidingLed(true);
+                  try {
+                    const supabase = getSupabaseBrowserClient();
+                    const { error } = await supabase
+                      .from("ledger_entries")
+                      .update({
+                        voided_at: new Date().toISOString(),
+                        void_reason: voidReasonLed.trim(),
+                      })
+                      .eq("id", voidModalRow.id)
+                      .is("voided_at", null);
+                    if (error) throw error;
+                    setVoidModalRow(null);
+                    await load();
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "Void failed");
+                  } finally {
+                    setVoidingLed(false);
+                  }
+                }}
+              >
+                {voidingLed ? "Voiding…" : "Confirm void"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

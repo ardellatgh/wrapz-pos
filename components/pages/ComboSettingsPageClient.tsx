@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Badge } from "@/components/ui/Badge";
@@ -57,9 +56,9 @@ function formatIsiLine(
   categoryName: string
 ): string {
   if (rule === "tambah") {
-    return `Tambah ${qty} dari ${categoryName}`;
+    return `Add ${qty} from ${categoryName}`;
   }
-  return `Pilih ${qty} dari ${categoryName}`;
+  return `Choose ${qty} from ${categoryName}`;
 }
 
 export function ComboSettingsPageClient() {
@@ -612,9 +611,9 @@ export function ComboSettingsPageClient() {
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
-          eyebrow="Acara"
-          title="Paket & kategori combo"
-          description="Atur kategori item dan paket harga. Pesanan tetap per item menu."
+          eyebrow="Catalog"
+          title="Combo packages"
+          description="Manage combo item categories and package pricing. Orders stay per menu item."
         />
         <SupabaseSetupBanner />
       </div>
@@ -624,34 +623,27 @@ export function ComboSettingsPageClient() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <PageHeader
-        eyebrow="Acara"
-        title="Paket & kategori combo"
-        description="Kelola kategori item combo dan paket harga untuk kasir. Pesanan tetap dicatat per item menu; mesin combo mengalokasikan unit tanpa double-count."
-        actions={
-          <Link href="/settings">
-            <Button type="button" variant="secondary">
-              ← Pengaturan acara
-            </Button>
-          </Link>
-        }
+        eyebrow="Catalog"
+        title="Combo packages"
+        description="Manage combo categories and package pricing for the register. Orders stay line-by-line on the menu; the combo engine allocates units without double-counting."
       />
 
       {loadError && (
         <Card className="border-brand-red/25 bg-brand-red/5 p-3 text-sm text-brand-red">
           {loadError}
           <Button variant="secondary" className="mt-2" type="button" onClick={() => void load()}>
-            Coba lagi
+            Retry
           </Button>
         </Card>
       )}
 
       {loading ? (
-        <p className="text-sm text-brand-text/60">Memuat…</p>
+        <p className="text-sm text-brand-text/60">Loading…</p>
       ) : (
         <>
           <Card className="space-y-3 p-4">
             <h2 className="font-display text-lg font-normal uppercase tracking-wide text-brand-text">
-              Pengaturan cepat
+              Quick settings
             </h2>
             <label className="flex cursor-pointer items-start gap-3 text-sm leading-snug text-brand-text">
               <input
@@ -662,20 +654,20 @@ export function ComboSettingsPageClient() {
                 onChange={(e) => void saveAutoApply(e.target.checked)}
               />
               <span>
-                <span className="font-semibold">Terapkan combo otomatis di kasir</span>
+                <span className="font-semibold">Auto-apply best combo on New Order</span>
                 <span className="mt-1 block text-xs text-brand-text/65">
-                  Saat aktif, layar pesanan baru langsung memakai harga paket terbaik yang memenuhi syarat. Saat nonaktif,
-                  kasir menekan satu tombol di keranjang: <strong>Terapkan combo terbaik</strong>.
+                  When on, New Order picks the best qualifying package price automatically. When off, the cashier taps
+                  one cart action: <strong>Apply best combo</strong>.
                 </span>
               </span>
             </label>
           </Card>
 
           <Card className="border border-brand-text/10 bg-brand-fill/60 p-4 text-sm text-brand-text/85">
-            <span className="font-semibold text-brand-text">Urutan apply otomatis: </span>
+            <span className="font-semibold text-brand-text">Auto-apply order: </span>
             <span>{applyOrderText}</span>
             <p className="mt-1 text-xs text-brand-text/55">
-              Urutan dihitung dari besar paket dan estimasi hemat; tidak perlu mengisi angka prioritas.
+              Order is derived from package size and estimated savings; you do not maintain raw numeric priorities.
             </p>
           </Card>
 
@@ -683,14 +675,14 @@ export function ComboSettingsPageClient() {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="font-display text-xl font-normal uppercase tracking-wide text-brand-text">
-                  Kategori item combo
+                  Combo item categories
                 </h2>
                 <p className="mt-1 text-sm text-brand-text/70">
-                  Ringkasan kategori. Edit lengkap di dalam jendela.
+                  Summary cards only — full edit opens in a modal.
                 </p>
               </div>
               <Button type="button" onClick={() => setCategoryModal({ mode: "create" })}>
-                + Kategori baru
+                + New category
               </Button>
             </div>
 

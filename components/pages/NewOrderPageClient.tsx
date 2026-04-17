@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
@@ -19,6 +20,13 @@ import {
 } from "@/lib/comboPricing";
 import { formatRupiah } from "@/lib/format";
 import { EVENT_SETTINGS_ROW_ID } from "@/lib/constants";
+import {
+  NEW_ORDER_DRAFT_KEY,
+  writeNewOrderDraft,
+  type DiscountMode,
+  type NewOrderDraftV1,
+  type PendingCheckout,
+} from "@/lib/newOrderDraft";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
 type MenuRow = {
@@ -36,22 +44,6 @@ type PresetRow = {
   discount_type: "percent" | "fixed";
   value: number;
   min_purchase: number | null;
-};
-
-type DiscountMode = "none" | "preset" | "manual_percent" | "manual_fixed";
-
-const NEW_ORDER_DRAFT_KEY = "wrapz_new_order_draft_v1";
-
-type NewOrderDraftV1 = {
-  v: 1;
-  cartQty: Record<string, number>;
-  customerName: string;
-  orderNotes: string;
-  discountMode: DiscountMode;
-  presetId: string;
-  manualPercent: string;
-  manualFixed: string;
-  bestComboApplied: boolean;
 };
 
 type CartLine = { item: MenuRow; quantity: number };
@@ -174,6 +166,8 @@ export function NewOrderPageClient() {
   const [comboFetchError, setComboFetchError] = useState<string | null>(null);
   const [bestComboApplied, setBestComboApplied] = useState(false);
   const [cardFlashId, setCardFlashId] = useState<string | null>(null);
+  const [qtyFlash, setQtyFlash] = useState<{ id: string; kind: "plus" | "minus" } | null>(null);
+  const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const skipNextComboResetForCart = useRef(true);
 
@@ -383,6 +377,16 @@ export function NewOrderPageClient() {
       if (typeof parsed.customerName === "string") setCustomerName(parsed.customerName);
       if (typeof parsed.orderNotes === "string") setOrderNotes(parsed.orderNotes);
       if (
+        parsed.pendingCheckout &&
+        typeof parsed.pendingCheckout === "object" &&
+        typeof parsed.pendingCheckout.orderId === "string" &&
+        typeof parsed.pendingCheckout.queueNumber === "number"
+      ) {
+        setPendingCheckout(parsed.pendingCheckout);
+      } else {
+        setPendingCheckout(null);
+      }
+      if (
         parsed.discountMode === "none" ||
         parsed.discountMode === "preset" ||
         parsed.discountMode === "manual_percent" ||
@@ -413,12 +417,9 @@ export function NewOrderPageClient() {
       manualPercent,
       manualFixed,
       bestComboApplied,
+      pendingCheckout: pendingCheckout ?? undefined,
     };
-    try {
-      localStorage.setItem(NEW_ORDER_DRAFT_KEY, JSON.stringify(draft));
-    } catch {
-      /* quota / private mode */
-    }
+    writeNewOrderDraft(draft);
   }, [
     draftHydrated,
     cartQty,
@@ -429,6 +430,7 @@ export function NewOrderPageClient() {
     manualPercent,
     manualFixed,
     bestComboApplied,
+    pendingCheckout,
   ]);
 
   useEffect(() => {
@@ -524,6 +526,11 @@ export function NewOrderPageClient() {
     [subtotal, comboSavingsAmount]
   );
 
+  function triggerQtyFlash(id: string, kind: "plus" | "minus") {
+    setQtyFlash({ id, kind });
+    window.setTimeout(() => setQtyFlash((cur) => (cur?.id === id && cur.kind === kind ? null : cur)), 160);
+  }
+
   function addOneFromCard(id: string) {
     setCardFlashId(id);
     window.setTimeout(() => setCardFlashId((cur) => (cur === id ? null : cur)), 180);
@@ -531,6 +538,7 @@ export function NewOrderPageClient() {
   }
 
   function addOne(id: string) {
+    triggerQtyFlash(id, "plus");
     setCartQty((q) => ({ ...q, [id]: (q[id] ?? 0) + 1 }));
   }
 
@@ -543,6 +551,7 @@ export function NewOrderPageClient() {
     setManualPercent("");
     setManualFixed("");
     setBestComboApplied(false);
+    setPendingCheckout(null);
     try {
       localStorage.removeItem(NEW_ORDER_DRAFT_KEY);
     } catch {
@@ -551,6 +560,7 @@ export function NewOrderPageClient() {
   }
 
   function deltaQty(id: string, delta: number) {
+    if (delta < 0) triggerQtyFlash(id, "minus");
     setCartQty((q) => {
       const next = Math.max(0, (q[id] ?? 0) + delta);
       const copy = { ...q };
@@ -651,11 +661,31 @@ export function NewOrderPageClient() {
       const { error: iErr } = await supabase.from("order_items").insert(itemRows);
       if (iErr) throw iErr;
 
-      try {
-        localStorage.removeItem(NEW_ORDER_DRAFT_KEY);
-      } catch {
-        /* ignore */
-      }
+      const checkout: PendingCheckout = { orderId, queueNumber: nextQueue };
+      const nextDraft: NewOrderDraftV1 = {
+        v: 1,
+        cartQty: {},
+        customerName: "",
+        orderNotes: "",
+        discountMode: "none",
+        presetId: "",
+        manualPercent: "",
+        manualFixed: "",
+        bestComboApplied: false,
+        pendingCheckout: checkout,
+      };
+      writeNewOrderDraft(nextDraft);
+      setCartQty({});
+      setCustomerName("");
+      setOrderNotes("");
+      setDiscountMode("none");
+      setPresetId("");
+      setManualPercent("");
+      setManualFixed("");
+      setBestComboApplied(false);
+      setPendingCheckout(checkout);
+      skipNextComboResetForCart.current = true;
+
       showToast(`Order #${String(nextQueue).padStart(3, "0")} created.`);
       router.push(`/order/${orderId}/payment`);
     } catch (e) {
@@ -734,6 +764,25 @@ export function NewOrderPageClient() {
         {loadError && (
           <Card className="border-red-200 bg-red-50/80 p-3 text-sm text-red-800">{loadError}</Card>
         )}
+        {pendingCheckout && cartLines.length === 0 ? (
+          <Card className="flex flex-col gap-2 border-brand-yellow/40 bg-brand-yellow-soft/50 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-brand-text">
+              <span className="font-semibold">Checkout in progress:</span> Order #
+              {String(pendingCheckout.queueNumber).padStart(3, "0")} is waiting for payment or settlement.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/order/${pendingCheckout.orderId}/payment`}
+                className="inline-flex min-h-[40px] items-center justify-center rounded-ref-sm border border-brand-red bg-brand-red px-3 text-sm font-semibold text-white shadow-sm"
+              >
+                Continue order
+              </Link>
+              <Button type="button" variant="secondary" className="min-h-[40px]" onClick={() => setPendingCheckout(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </Card>
+        ) : null}
         {loading ? (
           <div className="space-y-3 p-4">
             {[1, 2, 3].map((i) => (
@@ -751,6 +800,8 @@ export function NewOrderPageClient() {
               const out = !item.is_bundle && stock != null && stock <= 0;
               const active = q > 0;
               const flash = cardFlashId === item.id;
+              const plusFlash = qtyFlash?.id === item.id && qtyFlash.kind === "plus";
+              const minusFlash = qtyFlash?.id === item.id && qtyFlash.kind === "minus";
               return (
                 <li
                   key={item.id}
@@ -801,7 +852,7 @@ export function NewOrderPageClient() {
                     <Button
                       type="button"
                       variant="secondary"
-                      className="px-2"
+                      className={`px-2 transition ${minusFlash ? "ring-2 ring-brand-red/70 ring-offset-1 bg-red-50/80" : ""}`}
                       onClick={() => deltaQty(item.id, -1)}
                       disabled={q === 0}
                     >
@@ -809,12 +860,18 @@ export function NewOrderPageClient() {
                     </Button>
                     <span
                       className={`min-w-[2ch] text-center font-display text-lg font-normal tabular-nums tracking-wide ${
-                        flash ? "scale-110 font-semibold text-brand-red transition-transform" : "text-brand-text"
+                        flash || plusFlash || minusFlash
+                          ? "scale-110 font-semibold text-brand-text transition-transform"
+                          : "text-brand-text"
                       }`}
                     >
                       {q}
                     </span>
-                    <Button type="button" className="px-2" onClick={() => addOne(item.id)}>
+                    <Button
+                      type="button"
+                      className={`px-2 transition ${plusFlash ? "ring-2 ring-brand-yellow/90 ring-offset-1 bg-brand-yellow-soft/80" : ""}`}
+                      onClick={() => addOne(item.id)}
+                    >
                       +
                     </Button>
                   </div>
