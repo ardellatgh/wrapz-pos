@@ -656,19 +656,19 @@ export function KitchenPageClient() {
           <p className="mt-2 text-xs text-brand-text/50">Orders appear here after payment or when sent to the kitchen.</p>
         </Card>
       ) : (
-        <div className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto pb-1.5">
+        <div className="flex min-h-0 w-full min-w-0 flex-1 gap-2 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch] lg:overflow-x-visible">
           {COLUMNS.map((col) => {
             const list = ordersByColumn.get(col.key) ?? [];
             return (
               <section
                 key={col.key}
-                className="flex w-[min(100%,288px)] shrink-0 flex-col rounded-lg border border-brand-text/10 bg-white shadow-card"
+                className="flex min-h-0 min-w-[min(85vw,280px)] shrink-0 flex-col rounded-lg border border-brand-text/10 bg-white shadow-card lg:min-w-[200px] lg:flex-1 lg:basis-0"
               >
-                <header className={`rounded-t-lg px-3 py-2 ${col.headerClass}`}>
-                  <h2 className="font-sans text-base font-semibold tracking-tight">{col.label}</h2>
+                <header className={`rounded-t-lg px-2.5 py-1.5 ${col.headerClass}`}>
+                  <h2 className="font-sans text-sm font-semibold leading-tight tracking-tight">{col.label}</h2>
                   <p className="mt-0 font-sans tabular-nums text-[10px] text-brand-text/55">{list.length} orders</p>
                 </header>
-                <div className="flex max-h-[calc(100vh-188px)] flex-col gap-1.5 overflow-y-auto p-1.5">
+                <div className="flex max-h-[min(72dvh,calc(100dvh-156px))] flex-col gap-1 overflow-y-auto p-1 lg:max-h-[min(78dvh,calc(100dvh-148px))]">
                   {list.map((order) => (
                     <KitchenOrderCard
                       key={order.id}
@@ -773,12 +773,12 @@ function KitchenOrderCard({
     waitMin > 10
       ? "text-red-700"
       : waitMin > 5
-        ? "text-amber-800"
+        ? "text-yellow-800"
         : muted
           ? "text-brand-text/50"
           : "text-brand-text";
   const waitBadgeClass =
-    waitMin > 10 ? "bg-red-50 ring-1 ring-red-200/80" : waitMin > 5 ? "bg-amber-50 ring-1 ring-amber-200/70" : "";
+    waitMin > 10 ? "bg-red-50 ring-1 ring-red-200/80" : waitMin > 5 ? "bg-yellow-50 ring-1 ring-yellow-200/75" : "";
 
   const hasCashierNotes =
     (order.cashier_order_note != null && order.cashier_order_note.trim().length > 0) ||
@@ -787,42 +787,42 @@ function KitchenOrderCard({
 
   return (
     <Card
-      className={`flex flex-col gap-1.5 p-2 text-[11px] leading-snug ${muted ? "border-brand-text/10 bg-brand-bg/80" : "border-brand-text/12 bg-white"}`}
+      className={`flex flex-col gap-0.5 p-1 text-[10px] leading-snug ${muted ? "border-brand-text/10 bg-brand-bg/80" : "border-brand-text/12 bg-white"}`}
     >
-      <header className="space-y-1 border-b border-brand-text/10 pb-2">
-        <p
-          className={`font-display text-3xl font-normal leading-none tracking-wide text-brand-red md:text-4xl ${
-            muted ? "text-brand-text/40" : ""
-          }`}
-        >
-          {queueLabel}
-        </p>
-        <p
-          className={`text-sm font-semibold leading-snug ${muted ? "text-brand-text/50" : "text-brand-text"}`}
-        >
-          {displayName}
-        </p>
+      <header className="flex items-start justify-between gap-2 border-b border-brand-text/10 pb-1">
+        <div className="min-w-0 flex-1">
+          <p
+            className={`font-display text-xl font-normal leading-none tracking-wide text-brand-red md:text-2xl ${
+              muted ? "text-brand-text/40" : ""
+            }`}
+          >
+            {queueLabel}
+          </p>
+          <p
+            className={`mt-0.5 line-clamp-2 text-[11px] font-bold leading-tight md:text-[12px] ${muted ? "text-brand-text/50" : "text-brand-text"}`}
+          >
+            {displayName}
+          </p>
+        </div>
         <div
-          className={`flex flex-wrap items-center justify-between gap-x-2 rounded-md px-1.5 py-1 ${waitBadgeClass} ${muted ? "opacity-60" : ""}`}
+          className={`shrink-0 rounded px-1 py-0.5 text-right ${waitBadgeClass} ${muted ? "opacity-60" : ""}`}
         >
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-text/45">Waiting</span>
           <span
-            className={`font-sans tabular-nums text-base font-bold tracking-tight ${waitUrgentClass} ${muted ? "!text-brand-text/45" : ""}`}
+            className={`font-sans tabular-nums text-sm font-bold leading-none md:text-base ${waitUrgentClass} ${muted ? "!text-brand-text/45" : ""}`}
           >
             {waitingLabel}
           </span>
         </div>
-        <p className="text-[10px] leading-tight text-brand-text/40">Since order placed</p>
       </header>
 
-      <div className="space-y-0.5" role="group" aria-label="Checklist progress">
+      <div className="space-y-0" role="group" aria-label="Checklist progress">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-brand-text/40">Progress</span>
-          <span className="font-sans text-[10px] font-semibold tabular-nums text-brand-text/50">
+          <span className="text-[8px] font-medium uppercase tracking-wide text-brand-text/40">Progress</span>
+          <span className="font-sans text-[8px] font-semibold tabular-nums text-brand-text/50">
             {progress.done}/{progress.total}
           </span>
         </div>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-brand-text/10">
+        <div className="h-px w-full overflow-hidden rounded-full bg-brand-text/10">
           <div
             className="h-full rounded-full bg-brand-green/70 transition-[width] duration-200 ease-out"
             style={{ width: `${progress.pct}%` }}
@@ -830,7 +830,7 @@ function KitchenOrderCard({
         </div>
       </div>
 
-      <div className="space-y-0 rounded-md bg-brand-bg/50 px-1.5 py-1 text-[11px] leading-tight">
+      <div className="space-y-0 rounded bg-brand-bg/50 px-1 py-px text-[9px] leading-tight">
         <div className="flex justify-between gap-2">
           <span className="text-brand-text/50">Payment</span>
           <span className="font-medium text-brand-text">{formatPayMethod(order.payment_method)}</span>
@@ -843,31 +843,31 @@ function KitchenOrderCard({
         </div>
       </div>
 
-      <ul className="space-y-0">
+      <ul className="space-y-0 leading-tight">
         {order.items.map((line) => {
           const bundleDone = line.is_bundle && line.bundleComponents ? lineKitchenComplete(line) : line.is_checked;
 
           if (line.is_bundle && line.bundleComponents && line.bundleComponents.length > 0) {
             return (
               <li key={line.id} className="border-t border-brand-text/10 first:border-t-0">
-                <div className="flex min-h-[32px] items-start gap-1.5 py-1 pl-0.5">
+                <div className="flex min-h-[22px] items-start gap-0.5 py-px pl-0.5">
                   <span
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-brand-text/20 ${
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-brand-text/20 ${
                       bundleDone ? "border-brand-green/80 bg-brand-green/10" : "bg-white"
                     }`}
                     aria-hidden
                   >
-                    {bundleDone ? <span className="text-xs leading-none text-brand-green">✓</span> : null}
+                    {bundleDone ? <span className="text-[10px] leading-none text-brand-green">✓</span> : null}
                   </span>
                   <span
-                    className={`text-xs font-semibold leading-snug ${
+                    className={`text-[11px] font-semibold leading-snug ${
                       bundleDone ? "text-brand-text/45 line-through" : muted ? "text-brand-text/55" : "text-brand-text"
                     }`}
                   >
                     {line.item_name} × {line.quantity}
                   </span>
                 </div>
-                <ul className="mb-0.5 ml-5 border-l border-brand-text/10 pl-1.5">
+                <ul className="mb-0 ml-3 border-l border-brand-text/10 pl-0.5">
                   {line.bundleComponents.map((comp) => (
                     <li key={comp.component_item_id}>
                       <button
@@ -876,12 +876,12 @@ function KitchenOrderCard({
                         onClick={() =>
                           checklistInteractive && onToggleBundleComponent(line, comp.component_item_id)
                         }
-                        className={`flex min-h-[32px] w-full items-start gap-1.5 py-0.5 text-left ${
+                        className={`flex min-h-[22px] w-full items-start gap-0.5 py-px text-left ${
                           !checklistInteractive ? "cursor-default opacity-65" : "active:bg-brand-bg/80"
                         }`}
                       >
                         <span
-                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-brand-text/25 ${
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-brand-text/25 ${
                             comp.checked ? "border-brand-green bg-brand-green/15" : "bg-white"
                           }`}
                           aria-hidden
@@ -891,7 +891,7 @@ function KitchenOrderCard({
                           ) : null}
                         </span>
                         <span
-                          className={`text-xs font-medium leading-snug ${
+                          className={`text-[10px] font-medium leading-snug ${
                             comp.checked
                               ? "text-brand-text/45 line-through"
                               : muted
@@ -900,8 +900,8 @@ function KitchenOrderCard({
                           }`}
                         >
                           <span className="font-semibold">{comp.component_name}</span>
-                          <span className="ml-1 font-sans tabular-nums text-[11px] text-brand-text/55">×{comp.qtyTotal}</span>
-                          <span className="ml-1 text-[10px] text-brand-text/40">({comp.qtyPerBundle} per bundle)</span>
+                          <span className="ml-1 font-sans tabular-nums text-[10px] text-brand-text/55">×{comp.qtyTotal}</span>
+                          <span className="ml-1 text-[9px] text-brand-text/40">({comp.qtyPerBundle}/bundle)</span>
                         </span>
                       </button>
                     </li>
@@ -917,12 +917,12 @@ function KitchenOrderCard({
                 type="button"
                 disabled={!checklistInteractive}
                 onClick={() => checklistInteractive && onToggleLine(line)}
-                className={`flex min-h-[32px] w-full items-start gap-1.5 py-1 text-left ${
+                className={`flex min-h-[22px] w-full items-start gap-0.5 py-px text-left ${
                   !checklistInteractive ? "cursor-default opacity-65" : "active:bg-brand-bg/80"
                 }`}
               >
                 <span
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-brand-text/25 ${
+                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-brand-text/25 ${
                     line.is_checked ? "border-brand-green bg-brand-green/15" : "bg-white"
                   }`}
                   aria-hidden
@@ -930,7 +930,7 @@ function KitchenOrderCard({
                   {line.is_checked ? <span className="text-xs leading-none text-brand-green">✓</span> : null}
                 </span>
                 <span
-                  className={`text-xs font-semibold leading-snug ${
+                  className={`text-[11px] font-semibold leading-snug ${
                     line.is_checked ? "text-brand-text/45 line-through" : muted ? "text-brand-text/55" : "text-brand-text"
                   }`}
                 >
@@ -943,8 +943,8 @@ function KitchenOrderCard({
       </ul>
 
       {hasCashierNotes && (
-        <div className="space-y-1 rounded border border-brand-text/10 bg-white px-2 py-1.5 text-[11px] leading-snug">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-text/40">Cashier notes</p>
+        <div className="space-y-0 rounded border border-brand-text/10 bg-white px-1 py-0.5 text-[9px] leading-snug">
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-brand-text/40">Cashier notes</p>
           {order.cashier_order_note != null && order.cashier_order_note.trim().length > 0 && (
             <p className="text-brand-text/85">
               <span className="text-brand-text/45">Order: </span>
@@ -966,30 +966,26 @@ function KitchenOrderCard({
         </div>
       )}
 
-      <div className="rounded-ref-sm border border-brand-text/8 bg-brand-fill/30 px-1.5 py-1">
-        <div className="flex items-center justify-between gap-1">
-          <label className="text-[9px] font-medium uppercase tracking-wide text-brand-text/40" htmlFor={`kn-${order.id}`}>
-            Kitchen note
-          </label>
-          {noteSaveUi === "saving" ? (
-            <span className="text-[9px] text-brand-text/45">Saving…</span>
-          ) : noteSaveUi === "saved" ? (
-            <span className="text-[9px] text-emerald-700/90">Saved</span>
-          ) : null}
-        </div>
+      <div className="relative rounded-ref-sm border border-brand-text/8 bg-brand-fill/30 p-0.5">
+        {noteSaveUi === "saving" ? (
+          <span className="absolute right-1 top-0.5 z-[1] text-[8px] text-brand-text/45">Saving…</span>
+        ) : noteSaveUi === "saved" ? (
+          <span className="absolute right-1 top-0.5 z-[1] text-[8px] text-emerald-700/90">Saved</span>
+        ) : null}
         <textarea
           id={`kn-${order.id}`}
-          rows={2}
+          rows={1}
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}
-          placeholder="Optional"
-          className="mt-0.5 w-full resize-none rounded-ref-sm border border-brand-text/10 bg-white/90 px-1.5 py-1 text-[11px] leading-snug text-brand-text/85 shadow-none outline-none transition placeholder:text-brand-text/35 focus:border-brand-yellow/50 focus:ring-1 focus:ring-brand-yellow/15"
+          placeholder="Add Kitchen Note Here"
+          aria-label="Kitchen note"
+          className="w-full resize-none rounded-ref-sm border border-brand-text/10 bg-white/90 px-1 py-px text-[9px] leading-tight text-brand-text/85 shadow-none outline-none transition placeholder:text-brand-text/40 focus:border-brand-yellow/50 focus:ring-1 focus:ring-brand-yellow/15"
         />
       </div>
 
-      <div className="mt-auto flex flex-col gap-1 border-t border-brand-text/10 pt-1.5">
+      <div className="mt-auto flex flex-col gap-px border-t border-brand-text/10 pt-0.5">
         {column === "queued" && (
-          <Button type="button" variant="primary" className="min-h-[38px] w-full text-xs" onClick={onStart}>
+          <Button type="button" variant="primary" className="min-h-[26px] w-full px-1.5 py-0.5 text-[10px]" onClick={onStart}>
             Start
           </Button>
         )}
@@ -997,7 +993,7 @@ function KitchenOrderCard({
           <Button
             type="button"
             variant="primary"
-            className={`min-h-[38px] w-full text-xs ${allChecked ? "bg-brand-green hover:bg-brand-green/90" : ""}`}
+            className={`min-h-[26px] w-full px-1.5 py-0.5 text-[10px] ${allChecked ? "bg-brand-green hover:bg-brand-green/90" : ""}`}
             disabled={!allChecked}
             onClick={onMarkReady}
           >
@@ -1008,7 +1004,7 @@ function KitchenOrderCard({
           <Button
             type="button"
             variant="primary"
-            className="min-h-[38px] w-full bg-brand-green text-xs hover:bg-brand-green/90"
+            className="min-h-[26px] w-full bg-brand-green px-1.5 py-0.5 text-[10px] hover:bg-brand-green/90"
             onClick={onServed}
           >
             Served
@@ -1018,7 +1014,7 @@ function KitchenOrderCard({
           <Button
             type="button"
             variant="ghost"
-            className="min-h-[34px] w-full rounded-lg border border-brand-text/15 text-xs text-brand-text/65"
+            className="min-h-[24px] w-full rounded-md border border-brand-text/15 px-1.5 py-0.5 text-[9px] text-brand-text/65"
             onClick={onMoveBack}
           >
             Move back one step

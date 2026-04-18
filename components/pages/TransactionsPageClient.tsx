@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Table, Td, Th } from "@/components/ui/Table";
+import { useToast } from "@/components/ui/Toast";
 import { formatDateTime, formatQueueNumber, formatRupiah } from "@/lib/format";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -23,6 +24,7 @@ type OrderRow = {
   discount_amount: number;
   total_amount: number;
   payment_status: string;
+  serving_status: string;
   payment_notes: string | null;
   settlement_notes: string | null;
   created_at: string;
@@ -84,6 +86,14 @@ function orderNeedsSettlement(order: OrderRow): boolean {
   return order.payment_status === "partially_paid";
 }
 
+/** Pending, unpaid, not yet sent to kitchen — safe to edit lines before payment exists. */
+function canRecoverPending(order: OrderRow, payment: PaymentRow | null): boolean {
+  if (order.voided_at != null) return false;
+  if (order.payment_status !== "pending") return false;
+  if (payment != null) return false;
+  return order.serving_status === "not_sent";
+}
+
 /** PostgREST returns at most ~1000 rows per request; page to load the full order list. */
 async function fetchAllOrdersForTransactions(
   supabase: ReturnType<typeof getSupabaseBrowserClient>
@@ -95,7 +105,7 @@ async function fetchAllOrdersForTransactions(
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id, queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status, payment_notes, settlement_notes, created_at, operator_note, operator_note_edited_at, voided_at, void_reason"
+        "id, queue_number, customer_name, subtotal, combo_savings_amount, discount_amount, total_amount, payment_status, serving_status, payment_notes, settlement_notes, created_at, operator_note, operator_note_edited_at, voided_at, void_reason"
       )
       .order("created_at", { ascending: false })
       .range(from, from + pageSize - 1);
@@ -112,6 +122,7 @@ async function fetchAllOrdersForTransactions(
         discount_amount: Number(r.discount_amount),
         total_amount: Number(r.total_amount),
         payment_status: r.payment_status as string,
+        serving_status: (r.serving_status as string) ?? "not_sent",
         payment_notes: (r.payment_notes as string | null) ?? null,
         settlement_notes: (r.settlement_notes as string | null) ?? null,
         created_at: r.created_at as string,
@@ -155,6 +166,7 @@ function compactItems(items: ItemRow[], maxLen = 72): string {
 }
 
 export function TransactionsPageClient() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -167,6 +179,7 @@ export function TransactionsPageClient() {
   const [voidTarget, setVoidTarget] = useState<OrderRow | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voiding, setVoiding] = useState(false);
+  const [kitchenSendingId, setKitchenSendingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -263,6 +276,50 @@ export function TransactionsPageClient() {
     return !!(o.payment_notes?.trim() || o.settlement_notes?.trim());
   }, []);
 
+  const confirmSendKitchen = useCallback(
+    async (orderId: string) => {
+      if (!isSupabaseConfigured()) return;
+      setKitchenSendingId(orderId);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: payRow, error: pErr } = await supabase
+          .from("payments")
+          .select("id")
+          .eq("order_id", orderId)
+          .maybeSingle();
+        if (pErr) throw pErr;
+        if (payRow) throw new Error("This order already has a payment recorded.");
+
+        const { data: lines, error: lErr } = await supabase
+          .from("order_items")
+          .select("id")
+          .eq("order_id", orderId)
+          .limit(1);
+        if (lErr) throw lErr;
+        if (!lines?.length) throw new Error("Add at least one line item before sending to the kitchen.");
+
+        const { error: uErr } = await supabase
+          .from("orders")
+          .update({
+            serving_status: "queued",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", orderId)
+          .eq("payment_status", "pending")
+          .eq("serving_status", "not_sent");
+        if (uErr) throw uErr;
+
+        showToast("Order queued for kitchen.");
+        await load();
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "Could not queue order", "error");
+      } finally {
+        setKitchenSendingId(null);
+      }
+    },
+    [load, showToast]
+  );
+
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
@@ -331,6 +388,7 @@ export function TransactionsPageClient() {
                   <Th className="max-w-[120px] bg-brand-bg/95">Op. note</Th>
                   <Th className="bg-brand-bg/95">Settlement</Th>
                   <Th className="whitespace-nowrap bg-brand-bg/95">Settle</Th>
+                  <Th className="whitespace-nowrap bg-brand-bg/95">Recover</Th>
                   <Th className="bg-brand-bg/95">Notes</Th>
                 </tr>
               </thead>
@@ -395,6 +453,29 @@ export function TransactionsPageClient() {
                             <span className="text-brand-text/35">—</span>
                           )}
                         </Td>
+                        <Td className="max-w-[140px] align-top text-xs" onClick={(e) => e.stopPropagation()}>
+                          {canRecoverPending(o, pay) ? (
+                            <div className="flex flex-col gap-1.5">
+                              <Link
+                                href={`/order/${o.id}/edit`}
+                                className="inline-flex min-h-8 items-center justify-center rounded-ref-sm border border-brand-text/15 bg-white px-2 py-1 font-semibold text-brand-red shadow-sm hover:bg-brand-fill"
+                              >
+                                Edit
+                              </Link>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="min-h-8 px-2 py-1 text-[11px] font-semibold"
+                                disabled={kitchenSendingId === o.id}
+                                onClick={() => void confirmSendKitchen(o.id)}
+                              >
+                                {kitchenSendingId === o.id ? "Queuing…" : "Confirm & kitchen"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-brand-text/35">—</span>
+                          )}
+                        </Td>
                         <Td className="align-top" onClick={(e) => e.stopPropagation()}>
                           {hasNotes(o) ? (
                             <Button
@@ -412,7 +493,7 @@ export function TransactionsPageClient() {
                       </tr>
                       {expanded && (
                         <tr className="bg-brand-bg/60">
-                          <Td colSpan={13} className="p-4">
+                          <Td colSpan={14} className="p-4">
                             <DetailPanel
                               order={o}
                               items={items}

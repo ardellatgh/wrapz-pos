@@ -253,7 +253,7 @@ export function NewOrderPageClient() {
       } catch (err) {
         setComboPackages([]);
         setComboMembersByGroup({});
-        setComboFetchError(err instanceof Error ? err.message : "Gagal memuat aturan combo");
+        setComboFetchError(err instanceof Error ? err.message : "Could not load combo rules");
         setComboRulesLoaded(true);
       }
 
@@ -261,6 +261,7 @@ export function NewOrderPageClient() {
         .from("menu_items")
         .select("id, name, image_url, price, low_stock_threshold, is_active, is_bundle")
         .eq("is_active", true)
+        .order("sort_order", { ascending: true })
         .order("name", { ascending: true });
       if (menuErr) throw menuErr;
       const rows = (menuData ?? []).map((r) => ({
@@ -534,6 +535,7 @@ export function NewOrderPageClient() {
   function addOneFromCard(id: string) {
     setCardFlashId(id);
     window.setTimeout(() => setCardFlashId((cur) => (cur === id ? null : cur)), 180);
+    triggerQtyFlash(id, "plus");
     setCartQty((q) => ({ ...q, [id]: (q[id] ?? 0) + 1 }));
   }
 
@@ -790,7 +792,7 @@ export function NewOrderPageClient() {
             ))}
           </div>
         ) : (
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 sm:gap-1.5 min-[700px]:grid-cols-4 min-[700px]:gap-1.5">
             {menu.map((item) => {
               const q = cartQty[item.id] ?? 0;
               const stock = item.is_bundle ? null : stockById[item.id] ?? 0;
@@ -805,7 +807,7 @@ export function NewOrderPageClient() {
               return (
                 <li
                   key={item.id}
-                  className={`relative flex flex-col overflow-hidden rounded-xl border bg-white p-2 transition hover:shadow-card ${
+                  className={`relative flex flex-col overflow-hidden rounded-lg border bg-white p-1 transition hover:shadow-card active:scale-[0.99] ${
                     active
                       ? "border-brand-yellow ring-2 ring-brand-yellow/90 ring-offset-1 ring-offset-white"
                       : "border-brand-text/10 hover:border-brand-red/30"
@@ -813,11 +815,11 @@ export function NewOrderPageClient() {
                 >
                   <button
                     type="button"
-                    className="-m-0.5 mb-1 flex min-h-[120px] flex-col rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-red/40"
+                    className="-m-0.5 mb-0.5 flex min-h-[76px] flex-col rounded-md text-left outline-none transition-transform active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-brand-red/40"
                     onClick={() => addOneFromCard(item.id)}
                     aria-label={`Add one ${item.name}`}
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-brand-bg">
+                    <div className="relative aspect-[4/3] max-h-[72px] overflow-hidden rounded-md bg-brand-bg sm:max-h-none">
                       {item.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -840,26 +842,28 @@ export function NewOrderPageClient() {
                         </div>
                       )}
                     </div>
-                    <p className="mt-1.5 px-0.5 text-sm font-semibold leading-snug text-brand-text">{item.name}</p>
-                    <p className="mt-0.5 px-0.5 font-display text-base font-normal tabular-nums tracking-wide text-brand-text/70">
+                    <p className="mt-0.5 px-0.5 text-[11px] font-semibold leading-tight text-brand-text line-clamp-2">
+                      {item.name}
+                    </p>
+                    <p className="mt-0 px-0.5 font-display text-xs font-normal tabular-nums tracking-wide text-brand-text/70">
                       {formatRupiah(item.price)}
                     </p>
                   </button>
                   <div
-                    className="mt-1 flex items-center justify-between gap-2 border-t border-brand-text/8 pt-2"
+                    className="mt-0.5 flex items-center justify-between gap-1 border-t border-brand-text/8 pt-1"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Button
                       type="button"
                       variant="secondary"
-                      className={`px-2 transition ${minusFlash ? "ring-2 ring-brand-red/70 ring-offset-1 bg-red-50/80" : ""}`}
+                      className={`min-h-8 min-w-8 shrink-0 px-0 py-0 text-base transition ${minusFlash ? "ring-2 ring-brand-red/70 ring-offset-1 bg-red-50/80" : ""}`}
                       onClick={() => deltaQty(item.id, -1)}
                       disabled={q === 0}
                     >
                       −
                     </Button>
                     <span
-                      className={`min-w-[2ch] text-center font-display text-lg font-normal tabular-nums tracking-wide ${
+                      className={`min-w-[2ch] text-center font-display text-base font-normal tabular-nums tracking-wide ${
                         flash || plusFlash || minusFlash
                           ? "scale-110 font-semibold text-brand-text transition-transform"
                           : "text-brand-text"
@@ -869,7 +873,7 @@ export function NewOrderPageClient() {
                     </span>
                     <Button
                       type="button"
-                      className={`px-2 transition ${plusFlash ? "ring-2 ring-brand-yellow/90 ring-offset-1 bg-brand-yellow-soft/80" : ""}`}
+                      className={`min-h-8 min-w-8 shrink-0 px-0 py-0 text-base transition ${plusFlash ? "ring-2 ring-brand-yellow/90 ring-offset-1 bg-brand-yellow-soft/80" : ""}`}
                       onClick={() => addOne(item.id)}
                     >
                       +
@@ -924,18 +928,20 @@ export function NewOrderPageClient() {
 
           {comboFetchError ? (
             <Card className="border-amber-300 bg-amber-50/90 p-3 text-xs text-amber-950">
-              <strong className="font-semibold">Aturan combo tidak dimuat.</strong> {comboFetchError}
+              <strong className="font-semibold">Combo rules could not be loaded.</strong> {comboFetchError}
             </Card>
           ) : null}
 
           {comboRulesLoaded && hasMatcherPackages && cartLines.length > 0 ? (
             <div className="rounded-lg border-2 border-brand-yellow/50 bg-brand-yellow-soft/60 p-3 text-sm shadow-sm">
               <h3 className="font-display text-sm font-normal uppercase tracking-wide text-brand-text">
-                Combo & paket
+                Combo & packages
               </h3>
               {comboSavingsActive && comboSavingsAmount > 0 ? (
                 <>
-                  <p className="mt-2 text-xs font-semibold text-brand-text/80">Combo aktif — diterapkan ke total</p>
+                  <p className="mt-2 text-xs font-semibold text-brand-text/80">
+                    Combo active — applied to your total
+                  </p>
                   <ul className="mt-2 space-y-2">
                     {comboPricingResult.snapshot.length > 0 ? (
                       comboPricingResult.snapshot.map((row) => (
@@ -944,15 +950,15 @@ export function NewOrderPageClient() {
                           className="rounded-md border border-brand-text/10 bg-white/90 px-2 py-2"
                         >
                           <div className="font-semibold text-brand-text">
-                            Paket {row.package_name}
-                            {row.count > 1 ? ` ×${row.count}` : ""} diterapkan
+                            Package {row.package_name}
+                            {row.count > 1 ? ` ×${row.count}` : ""} applied
                           </div>
                           <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-brand-text/75">
                             <span>
-                              Harga list {formatRupiah(row.list_value)} → paket {formatRupiah(row.package_value)}
+                              List {formatRupiah(row.list_value)} → package {formatRupiah(row.package_value)}
                             </span>
                             <span className="font-semibold text-emerald-900">
-                              Hemat −{formatRupiah(Math.max(0, row.savings))}
+                              Save −{formatRupiah(Math.max(0, row.savings))}
                             </span>
                           </div>
                           {row.allocations.length > 0 ? (
@@ -966,7 +972,7 @@ export function NewOrderPageClient() {
                       ))
                     ) : (
                       <li className="rounded-md bg-white/90 px-2 py-2 text-brand-text">
-                        Hemat combo total:{" "}
+                        Combo savings total:{" "}
                         <span className="font-semibold text-emerald-900">
                           −{formatRupiah(Math.max(0, comboSavingsAmount))}
                         </span>
@@ -974,20 +980,23 @@ export function NewOrderPageClient() {
                     )}
                   </ul>
                   <p className="mt-2 text-xs text-brand-text/65">
-                    Total di bawah sudah memakai hemat combo (subtotal list tetap ditampilkan).
+                    Figures below include combo savings (list subtotal is still shown above).
                   </p>
                 </>
               ) : potentialComboSavings > 0 ? (
                 <>
                   <p className="mt-2 text-xs text-brand-text/80">
-                    Tersedia hemat combo sebesar{" "}
+                    Combo savings available:{" "}
                     <span className="font-semibold text-emerald-900">{formatRupiah(potentialComboSavings)}</span>
                     {!comboAutoApply ? (
                       <>
-                        . Tekan <strong>Terapkan combo terbaik</strong> untuk memakainya.
+                        . Tap <strong>Apply best combo</strong> to use it.
                       </>
                     ) : (
-                      <> — seharusnya otomatis aktif; periksa pengaturan paket di menu Combo.</>
+                      <>
+                        {" "}
+                        — should apply automatically; check package setup under Combo in the menu.
+                      </>
                     )}
                   </p>
                   {!comboAutoApply ? (
@@ -997,20 +1006,19 @@ export function NewOrderPageClient() {
                       className="mt-3 w-full"
                       onClick={() => setBestComboApplied(true)}
                     >
-                      Terapkan combo terbaik
+                      Apply best combo
                     </Button>
                   ) : null}
                 </>
               ) : (
                 <p className="mt-2 text-xs text-brand-text/70">
-                  Belum ada paket combo yang cocok dengan isi keranjang saat ini (cek kategori item & isi paket di
-                  pengaturan).
+                  No combo package matches this cart yet (check item categories and package slots in settings).
                 </p>
               )}
             </div>
           ) : comboRulesLoaded && cartLines.length > 0 && !hasMatcherPackages ? (
             <p className="text-xs text-brand-text/55">
-              Belum ada paket combo yang siap dipakai. Atur di <strong>Pengaturan → Combo</strong>.
+              No combo packages are ready yet. Configure under <strong>Settings → Combo</strong>.
             </p>
           ) : null}
 
@@ -1122,7 +1130,7 @@ export function NewOrderPageClient() {
               </span>
             </p>
             <p className="text-xs text-brand-text/55">
-              Diskon dihitung setelah hemat combo. Minimum belanja preset tetap memakai subtotal harga list (
+              Discount is calculated after combo savings. Preset minimum purchase still uses list subtotal (
               {formatRupiah(subtotal)}).
             </p>
           </div>
@@ -1135,13 +1143,13 @@ export function NewOrderPageClient() {
             {comboRulesLoaded && hasMatcherPackages && cartLines.length > 0 ? (
               <>
                 <div className="flex justify-between text-emerald-900">
-                  <span>Hemat combo</span>
+                  <span>Combo savings</span>
                   <span className="font-sans tabular-nums">
                     {comboSavingsAmount > 0 ? `−${formatRupiah(comboSavingsAmount)}` : "—"}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-dashed border-brand-text/15 pt-1 text-brand-text/85">
-                  <span>Setelah combo (sebelum diskon)</span>
+                  <span>After combo (before discount)</span>
                   <span className="font-sans font-medium tabular-nums">{formatRupiah(subtotalAfterCombo)}</span>
                 </div>
               </>
@@ -1151,7 +1159,7 @@ export function NewOrderPageClient() {
               <span className="font-sans tabular-nums">−{formatRupiah(discountAmount)}</span>
             </div>
             <div className="flex justify-between font-semibold">
-              <span>Total dibayar</span>
+              <span>Total to pay</span>
               <span className="font-sans tabular-nums">{formatRupiah(totalAmount)}</span>
             </div>
           </div>

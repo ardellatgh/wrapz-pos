@@ -22,6 +22,7 @@ type MenuItem = {
   low_stock_threshold: number | null;
   is_active: boolean;
   is_bundle: boolean;
+  sort_order: number;
 };
 
 type BundleLine = { component_item_id: string; quantity: number };
@@ -40,6 +41,7 @@ function mapMenuRow(r: Record<string, unknown>): MenuItem {
       r.low_stock_threshold == null ? null : Number(r.low_stock_threshold),
     is_active: Boolean(r.is_active),
     is_bundle: Boolean(r.is_bundle),
+    sort_order: r.sort_order == null ? 0 : Number(r.sort_order),
   };
 }
 
@@ -62,6 +64,8 @@ export function MenuPageClient() {
   const [bundleComponentCounts, setBundleComponentCounts] = useState<Record<string, number>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -73,7 +77,11 @@ export function MenuPageClient() {
     try {
       const supabase = getSupabaseBrowserClient();
       const [{ data, error }, bcRes] = await Promise.all([
-        supabase.from("menu_items").select("*").order("created_at", { ascending: false }),
+        supabase
+          .from("menu_items")
+          .select("*")
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true }),
         supabase.from("bundle_components").select("bundle_id"),
       ]);
       if (error) throw error;
@@ -105,6 +113,46 @@ export function MenuPageClient() {
     if (tab === "bundles") return rows.filter((r) => r.is_bundle);
     return rows;
   }, [rows, tab]);
+
+  const persistSortOrder = useCallback(
+    async (ordered: MenuItem[]) => {
+      if (!isSupabaseConfigured()) return;
+      setSavingOrder(true);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const now = new Date().toISOString();
+        for (let i = 0; i < ordered.length; i++) {
+          const { error } = await supabase
+            .from("menu_items")
+            .update({ sort_order: i, updated_at: now })
+            .eq("id", ordered[i].id);
+          if (error) throw error;
+        }
+        setRows(ordered.map((r, i) => ({ ...r, sort_order: i })));
+        showToast("Menu order saved.");
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Could not save order", "error");
+        await load();
+      } finally {
+        setSavingOrder(false);
+      }
+    },
+    [load, showToast]
+  );
+
+  function onDropRow(sourceId: string, targetId: string) {
+    if (tab !== "all" || sourceId === targetId) return;
+    setRows((prev) => {
+      const next = [...prev];
+      const si = next.findIndex((r) => r.id === sourceId);
+      const ti = next.findIndex((r) => r.id === targetId);
+      if (si < 0 || ti < 0) return prev;
+      const [removed] = next.splice(si, 1);
+      next.splice(ti, 0, removed);
+      void persistSortOrder(next);
+      return next;
+    });
+  }
 
   async function loadBundleLines(bundleId: string) {
     const supabase = getSupabaseBrowserClient();
@@ -263,9 +311,19 @@ export function MenuPageClient() {
         if (error) throw error;
         menuId = editing.id;
       } else {
+        const { data: maxRow } = await supabase
+          .from("menu_items")
+          .select("sort_order")
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextSort =
+          maxRow != null && (maxRow as { sort_order?: unknown }).sort_order != null
+            ? Number((maxRow as { sort_order: unknown }).sort_order) + 1
+            : 0;
         const { data, error } = await supabase
           .from("menu_items")
-          .insert({ ...basePayload, image_url: null })
+          .insert({ ...basePayload, image_url: null, sort_order: nextSort })
           .select("id")
           .single();
         if (error) throw error;
@@ -334,7 +392,8 @@ export function MenuPageClient() {
         description={
           <>
             Menu items and bundles. Images use Supabase Storage bucket{" "}
-            <code className="rounded bg-white px-1 font-sans tabular-nums text-xs">{BUCKET}</code>.
+            <code className="rounded bg-white px-1 font-sans tabular-nums text-xs">{BUCKET}</code>. On the{" "}
+            <strong>All</strong> tab, drag the handle column to set the POS menu order (saved to the database).
           </>
         }
         actions={<Button onClick={openCreate}>Add menu item</Button>}
@@ -377,6 +436,11 @@ export function MenuPageClient() {
           <Table>
             <thead>
               <tr>
+                {tab === "all" ? (
+                  <Th className="w-10 text-center" aria-label="Reorder">
+                    Order
+                  </Th>
+                ) : null}
                 <Th className="w-14">Img</Th>
                 <Th>Name</Th>
                 <Th>Price</Th>
@@ -388,7 +452,46 @@ export function MenuPageClient() {
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id}>
+                <tr
+                  key={r.id}
+                  className={draggingId === r.id ? "opacity-55" : undefined}
+                  onDragOver={
+                    tab === "all"
+                      ? (e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }
+                      : undefined
+                  }
+                  onDrop={
+                    tab === "all"
+                      ? (e) => {
+                          e.preventDefault();
+                          const sid = e.dataTransfer.getData("text/plain");
+                          if (sid) onDropRow(sid, r.id);
+                        }
+                      : undefined
+                  }
+                >
+                  {tab === "all" ? (
+                    <Td className="w-10 align-middle text-center">
+                      <button
+                        type="button"
+                        className="inline-flex min-h-[40px] min-w-[40px] cursor-grab items-center justify-center rounded-ref-sm border border-brand-text/10 bg-brand-fill/60 text-brand-text/55 active:cursor-grabbing touch-manipulation disabled:opacity-40"
+                        aria-label={`Drag to reorder ${r.name}`}
+                        draggable={!savingOrder}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/plain", r.id);
+                          e.dataTransfer.effectAllowed = "move";
+                          setDraggingId(r.id);
+                        }}
+                        onDragEnd={() => setDraggingId(null)}
+                        disabled={savingOrder}
+                      >
+                        ⋮⋮
+                      </button>
+                    </Td>
+                  ) : null}
                   <Td>
                     {r.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element

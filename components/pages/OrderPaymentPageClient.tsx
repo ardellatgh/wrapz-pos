@@ -546,7 +546,7 @@ export function OrderPaymentPageClient() {
                       <Button
                         type="button"
                         variant="secondary"
-                        className="min-h-9 border border-brand-text/15 bg-brand-yellow/12 px-3 py-1.5 text-xs text-brand-text shadow-sm hover:bg-brand-yellow/18"
+                        className="min-h-9 border border-brand-red/40 bg-white px-3 py-1.5 text-xs font-semibold text-brand-red shadow-sm hover:bg-brand-red-soft/80"
                         onClick={() => setCashTenderInput("")}
                       >
                         Reset

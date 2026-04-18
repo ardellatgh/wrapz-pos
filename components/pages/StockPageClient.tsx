@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
@@ -99,6 +100,7 @@ export function StockPageClient() {
         .select("id, name, low_stock_threshold")
         .eq("is_active", true)
         .eq("is_bundle", false)
+        .order("sort_order", { ascending: true })
         .order("name", { ascending: true });
       if (menuError) throw menuError;
       const menuRows = (menuData ?? []).map(mapMenuRow);
@@ -252,8 +254,34 @@ export function StockPageClient() {
       <PageHeader
         eyebrow="Floor"
         title="Stock"
-        description="Current stock is computed from movement history only (no manual overrides on menu rows)."
+        description="Operational stock paths: menu-level counts (this page) vs future component-level planning."
       />
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="border-brand-red/25 bg-brand-red/[0.04] p-4">
+          <h2 className="font-display text-sm font-normal uppercase tracking-wide text-brand-yellow">
+            Stock per menu
+          </h2>
+          <p className="mt-2 text-sm text-brand-text/80">
+            Live menu-item quantities from stock movements — the working view for this event.
+          </p>
+          <p className="mt-3 text-xs font-semibold text-brand-red">You are here</p>
+        </Card>
+        <Card className="border-brand-text/12 p-4">
+          <h2 className="font-display text-sm font-normal uppercase tracking-wide text-brand-yellow">
+            Stock per component
+          </h2>
+          <p className="mt-2 text-sm text-brand-text/80">
+            Blueprint for future component master, buildable counters, and variance — planning only (local notes).
+          </p>
+          <Link
+            href="/stock/components"
+            className="mt-4 inline-flex min-h-10 items-center justify-center rounded-ref-sm border border-brand-text/15 bg-white px-4 py-2 text-xs font-semibold text-brand-text shadow-card transition hover:bg-brand-fill"
+          >
+            Open component blueprint →
+          </Link>
+        </Card>
+      </div>
 
       {loadError && (
         <Card className="border-red-200 bg-red-50/80 p-4 text-sm text-red-800">{loadError}</Card>

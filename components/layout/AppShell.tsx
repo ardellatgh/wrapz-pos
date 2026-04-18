@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useKioskMode } from "@/components/layout/KioskModeProvider";
 
 type NavItem = { href: string; label: string; icon: string };
@@ -39,7 +39,10 @@ const navGroups: NavGroup[] = [
   },
   {
     title: "Event",
-    items: [{ href: "/settings", label: "Settings", icon: "⚙️" }],
+    items: [
+      { href: "/planning/event-ops", label: "Event ops planning", icon: "🗺️" },
+      { href: "/settings", label: "Settings", icon: "⚙️" },
+    ],
   },
 ];
 
@@ -103,22 +106,54 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string | null; onNavig
   );
 }
 
+const SIDEBAR_COLLAPSED_KEY = "wrapz_sidebar_collapsed";
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { kiosk } = useKioskMode();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") {
+        setSidebarCollapsed(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarCollapsed]);
+
+  const showDesktopSidebar = !kiosk && !sidebarCollapsed;
 
   return (
     <div className="flex min-h-screen">
       <aside
-        className={`hidden w-[260px] shrink-0 flex-col border-r border-brand-text/10 bg-white shadow-card md:flex ${
-          kiosk ? "!hidden" : ""
-        }`}
+        className={`hidden w-[260px] shrink-0 flex-col border-r border-brand-text/10 bg-white shadow-card ${
+          showDesktopSidebar ? "md:flex" : "md:!hidden"
+        } ${kiosk ? "!hidden" : ""}`}
       >
-        <div className="flex min-h-[60px] shrink-0 items-center border-b border-brand-text/10 px-5 py-3">
+        <div className="flex min-h-[60px] shrink-0 items-center justify-between gap-2 border-b border-brand-text/10 px-4 py-3 md:px-5">
           <span className="font-display text-[28px] font-normal uppercase leading-none tracking-[0.12em] text-brand-yellow">
             WRAPZ
           </span>
+          <button
+            type="button"
+            className="hidden min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-ref-sm border border-brand-text/12 bg-white text-sm font-semibold text-brand-text/70 shadow-card transition hover:bg-brand-fill hover:text-brand-text md:inline-flex"
+            aria-expanded={showDesktopSidebar}
+            aria-label="Collapse navigation"
+            onClick={() => setSidebarCollapsed(true)}
+          >
+            «
+          </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <SidebarNav pathname={pathname} />
@@ -176,6 +211,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </aside>
           </>
+        )}
+
+        {sidebarCollapsed && !kiosk && (
+          <button
+            type="button"
+            className="fixed left-0 top-[72px] z-30 hidden min-h-[44px] min-w-[44px] items-center justify-center rounded-r-ref border border-l-0 border-brand-text/12 bg-white py-2 pl-1 pr-2 text-lg font-semibold text-brand-text/75 shadow-card transition hover:bg-brand-fill hover:text-brand-text md:flex"
+            aria-label="Expand navigation"
+            onClick={() => setSidebarCollapsed(false)}
+          >
+            »
+          </button>
         )}
 
         <main

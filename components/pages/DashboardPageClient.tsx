@@ -6,23 +6,40 @@ import { SupabaseSetupBanner } from "@/components/SupabaseSetupBanner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useToast } from "@/components/ui/Toast";
 import { EVENT_SETTINGS_ROW_ID } from "@/lib/constants";
 import { formatDateTime, formatRupiah } from "@/lib/format";
+import {
+  defaultDashboardPlanningBlueprint,
+  loadJson,
+  type DashboardPlanningBlueprint,
+  saveJson,
+} from "@/lib/eventOpsBlueprint";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
+const DASH_PLAN_KEY = "dashboard_planning_v1";
+
 const REFRESH_MS = 60_000;
+
+type PaidAggRow = {
+  id: string;
+  subtotal: number;
+  combo_savings_amount: number;
+  discount_amount: number;
+  total_amount: number;
+};
 
 /** PostgREST caps rows per request (default 1000); paginate to aggregate all paid orders. */
 async function fetchAllPaidOrdersForAgg(
   supabase: ReturnType<typeof getSupabaseBrowserClient>
-): Promise<{ id: string; subtotal: number; discount_amount: number }[]> {
+): Promise<PaidAggRow[]> {
   const pageSize = 1000;
   let from = 0;
-  const all: { id: string; subtotal: number; discount_amount: number }[] = [];
+  const all: PaidAggRow[] = [];
   for (;;) {
     const { data, error } = await supabase
       .from("orders")
-      .select("id, subtotal, discount_amount")
+      .select("id, subtotal, combo_savings_amount, discount_amount, total_amount")
       .eq("payment_status", "paid")
       .order("created_at", { ascending: true })
       .range(from, from + pageSize - 1);
@@ -32,13 +49,39 @@ async function fetchAllPaidOrdersForAgg(
       all.push({
         id: r.id as string,
         subtotal: Number(r.subtotal),
+        combo_savings_amount:
+          r.combo_savings_amount != null ? Number(r.combo_savings_amount) : 0,
         discount_amount: Number(r.discount_amount),
+        total_amount: Number(r.total_amount),
       });
     }
     if (chunk.length < pageSize) break;
     from += pageSize;
   }
   return all;
+}
+
+async function fetchPaymentsForOrderIds(
+  supabase: ReturnType<typeof getSupabaseBrowserClient>,
+  orderIds: string[]
+): Promise<{ order_id: string; method: string; amount_tendered: number }[]> {
+  if (orderIds.length === 0) return [];
+  const out: { order_id: string; method: string; amount_tendered: number }[] = [];
+  for (const part of chunkIds(orderIds, 400)) {
+    const { data, error } = await supabase
+      .from("payments")
+      .select("order_id, method, amount_tendered")
+      .in("order_id", part);
+    if (error) throw error;
+    for (const r of data ?? []) {
+      out.push({
+        order_id: r.order_id as string,
+        method: r.method as string,
+        amount_tendered: Number(r.amount_tendered),
+      });
+    }
+  }
+  return out;
 }
 
 function chunkIds(ids: string[], size: number): string[][] {
@@ -56,16 +99,28 @@ type Readiness = {
   cashSessionOk: boolean;
 };
 
+type ChannelKey = "cash" | "qris" | "transfer";
+
 type DashboardData = {
   anyOrdersCount: number;
+  /** Sum of list-priced subtotals (before combo savings and discount). */
   grossSales: number;
+  comboSavingsTotal: number;
   discountTotal: number;
+  /** Sum of final total_amount (after combo savings and discount). */
   netSales: number;
   totalPaidOrders: number;
   aov: number;
   targetRevenue: number | null;
   topSelling: TopSeller[];
   readiness: Readiness;
+  /** Net tendered by channel (initial payment row per paid order). */
+  collected: Record<ChannelKey, number>;
+  /** Sum of order total_amount attributed to each payment channel. */
+  receivableByChannel: Record<ChannelKey, number>;
+  /** actual − receivable per channel (tendered vs order net for orders using that channel). */
+  varianceByChannel: Record<ChannelKey, number>;
+  totalNetCollected: number;
 };
 
 function readinessComplete(r: Readiness): boolean {
@@ -118,14 +173,39 @@ export function DashboardPageClient() {
       const paidIds = paidRows.map((r) => r.id);
 
       let grossSales = 0;
+      let comboSavingsTotal = 0;
       let discountTotal = 0;
+      let netSales = 0;
       for (const r of paidRows) {
-        grossSales += Number(r.subtotal);
-        discountTotal += Number(r.discount_amount);
+        grossSales += r.subtotal;
+        comboSavingsTotal += r.combo_savings_amount;
+        discountTotal += r.discount_amount;
+        netSales += r.total_amount;
       }
-      const netSales = grossSales - discountTotal;
       const totalPaidOrders = paidRows.length;
       const aov = totalPaidOrders > 0 ? netSales / totalPaidOrders : 0;
+
+      const payments = await fetchPaymentsForOrderIds(supabase, paidIds);
+      const paidById = new Map(paidRows.map((r) => [r.id, r]));
+      const zeroChannel = (): Record<ChannelKey, number> => ({
+        cash: 0,
+        qris: 0,
+        transfer: 0,
+      });
+      const collected = zeroChannel();
+      const receivableByChannel = zeroChannel();
+      for (const p of payments) {
+        const ch = p.method as ChannelKey;
+        if (ch !== "cash" && ch !== "qris" && ch !== "transfer") continue;
+        collected[ch] += p.amount_tendered;
+        const ord = paidById.get(p.order_id);
+        if (ord) receivableByChannel[ch] += ord.total_amount;
+      }
+      const varianceByChannel = zeroChannel();
+      (["cash", "qris", "transfer"] as const).forEach((k) => {
+        varianceByChannel[k] = collected[k] - receivableByChannel[k];
+      });
+      const totalNetCollected = collected.cash + collected.qris + collected.transfer;
 
       const trRaw = eventRes.data?.target_revenue;
       const trNum = trRaw != null ? Number(trRaw) : NaN;
@@ -166,6 +246,7 @@ export function DashboardPageClient() {
       setData({
         anyOrdersCount,
         grossSales,
+        comboSavingsTotal,
         discountTotal,
         netSales,
         totalPaidOrders,
@@ -173,6 +254,10 @@ export function DashboardPageClient() {
         targetRevenue,
         topSelling,
         readiness,
+        collected,
+        receivableByChannel,
+        varianceByChannel,
+        totalNetCollected,
       });
       setLastRefreshedAt(Date.now());
     } catch (e) {
@@ -317,6 +402,23 @@ export function DashboardPageClient() {
             </Card>
           ) : null}
 
+          <Card className="border-brand-text/10 bg-brand-fill/40 p-4 text-sm leading-relaxed text-brand-text/85">
+            <h2 className="font-display text-xs font-normal uppercase tracking-wide text-brand-yellow">Sales definitions (paid orders)</h2>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
+              <li>
+                <strong>Gross sales</strong> — sum of line list subtotals (<code className="rounded bg-white px-1">orders.subtotal</code>
+                ) before combo savings and discounts.
+              </li>
+              <li>
+                <strong>Net sales</strong> — sum of final order totals (
+                <code className="rounded bg-white px-1">orders.total_amount</code>) after combo savings and discounts.
+              </li>
+              <li>
+                Identity: <strong>Net sales ≈ Gross sales − Combo savings − Discount total</strong> (minor rounding possible).
+              </li>
+            </ul>
+          </Card>
+
           <Card className="overflow-hidden border-brand-red/20 bg-white p-5 shadow-card">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-text/10 pb-4">
               <div>
@@ -381,7 +483,7 @@ export function DashboardPageClient() {
             )}
           </Card>
 
-          <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <KpiTile
               label="Net sales"
               value={formatRupiah(data.netSales)}
@@ -397,9 +499,16 @@ export function DashboardPageClient() {
               valueClassName="text-semantic-info"
             />
             <KpiTile
+              label="Combo savings"
+              value={formatRupiah(data.comboSavingsTotal)}
+              className="border-brand-yellow/45 bg-brand-yellow-soft"
+              labelClassName="text-brand-text/50"
+              valueClassName="text-brand-text"
+            />
+            <KpiTile
               label="Discount total"
               value={formatRupiah(data.discountTotal)}
-              className="border-brand-yellow/45 bg-brand-yellow-soft"
+              className="border-brand-yellow/35 bg-brand-yellow-soft/70"
               labelClassName="text-brand-text/50"
               valueClassName="text-brand-text"
             />
@@ -412,13 +521,73 @@ export function DashboardPageClient() {
               valueClassName="text-brand-text"
             />
             <KpiTile
-              label="AOV"
+              label="AOV (net)"
               value={data.totalPaidOrders > 0 ? formatRupiah(Math.round(data.aov)) : "—"}
+              hint="Net sales ÷ paid orders"
               className="border-brand-green/30 bg-brand-green/10"
               labelClassName="text-brand-green/60"
               valueClassName="text-brand-green"
             />
           </div>
+
+          <Card className="border-brand-text/10 bg-white p-5">
+            <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">
+              Net collected by channel
+            </h2>
+            <p className="mt-1 text-xs text-brand-text/55">
+              Initial payment tender per channel on paid orders. Receivable = order net total attributed to that channel;
+              variance = tendered − receivable (overpay shows positive).
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiTile
+                label="Cash net collected"
+                value={formatRupiah(data.collected.cash)}
+                className="border-brand-text/12 bg-brand-fill/70"
+              />
+              <KpiTile
+                label="QRIS net collected"
+                value={formatRupiah(data.collected.qris)}
+                className="border-brand-text/12 bg-brand-fill/70"
+              />
+              <KpiTile
+                label="Transfer net collected"
+                value={formatRupiah(data.collected.transfer)}
+                className="border-brand-text/12 bg-brand-fill/70"
+              />
+              <KpiTile
+                label="Total net collected"
+                value={formatRupiah(data.totalNetCollected)}
+                hint="Cash + QRIS + transfer tender"
+                className="border-brand-green/25 bg-brand-green/12"
+                labelClassName="text-brand-green/70"
+                valueClassName="text-brand-green"
+              />
+            </div>
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[520px] text-left text-xs">
+                <thead>
+                  <tr className="border-b border-brand-text/10 text-brand-text/55">
+                    <th className="py-2 pr-3 font-semibold">Channel</th>
+                    <th className="py-2 pr-3 font-semibold text-right">Receivable (net)</th>
+                    <th className="py-2 pr-3 font-semibold text-right">Actual tender</th>
+                    <th className="py-2 font-semibold text-right">Variance</th>
+                  </tr>
+                </thead>
+                <tbody className="tabular-nums text-brand-text">
+                  {(["cash", "qris", "transfer"] as const).map((ch) => (
+                    <tr key={ch} className="border-b border-brand-text/5">
+                      <td className="py-2 capitalize">{ch}</td>
+                      <td className="py-2 text-right">{formatRupiah(data.receivableByChannel[ch])}</td>
+                      <td className="py-2 text-right">{formatRupiah(data.collected[ch])}</td>
+                      <td className="py-2 text-right font-medium">{formatRupiah(data.varianceByChannel[ch])}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <DashboardPlanningSection />
 
           <Card className="border-brand-text/10 bg-white p-5">
             <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">Top selling menu</h2>
@@ -457,6 +626,92 @@ export function DashboardPageClient() {
         </>
       ) : null}
     </div>
+  );
+}
+
+function DashboardPlanningSection() {
+  const { showToast } = useToast();
+  const [plan, setPlan] = useState<DashboardPlanningBlueprint>(defaultDashboardPlanningBlueprint());
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setPlan(loadJson(DASH_PLAN_KEY, defaultDashboardPlanningBlueprint()));
+    setHydrated(true);
+  }, []);
+
+  const save = () => {
+    saveJson(DASH_PLAN_KEY, plan);
+    showToast("Planning notes saved locally.");
+  };
+
+  if (!hydrated) return null;
+
+  return (
+    <Card className="border-dashed border-brand-yellow/40 bg-brand-yellow-soft/30 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-base font-normal uppercase tracking-wide text-brand-yellow">
+            Future dashboard metrics (planning)
+          </h2>
+          <p className="mt-1 max-w-2xl text-xs text-brand-text/60">
+            No fabricated live analytics — edit operational notes for what we intend to surface next (targets vs actual,
+            GMV leaders, cost/GP when engines exist). Stored only in{" "}
+            <code className="rounded bg-white px-1">localStorage</code>.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/planning/event-ops"
+            className="inline-flex min-h-10 items-center justify-center rounded-ref-sm border border-brand-text/12 bg-white px-4 py-2 text-xs font-semibold text-brand-text shadow-card transition hover:bg-brand-fill"
+          >
+            Planning hub
+          </Link>
+          <Button type="button" className="text-xs" onClick={save}>
+            Save notes
+          </Button>
+        </div>
+      </div>
+      <div className="mt-4 space-y-3">
+        <label className="block text-xs font-medium text-brand-text/70">Future metrics overview</label>
+        <textarea
+          className="min-h-[72px] w-full rounded-ref-sm border border-brand-text/12 bg-white px-2 py-2 text-sm"
+          value={plan.futureMetricsNotes}
+          onChange={(e) => setPlan((p) => ({ ...p, futureMetricsNotes: e.target.value }))}
+        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-brand-text/70">Target vs actual by menu</label>
+            <textarea
+              className="mt-1 min-h-[56px] w-full rounded-ref-sm border border-brand-text/12 bg-white px-2 py-1.5 text-xs"
+              value={plan.targetVsActualMenuNote}
+              onChange={(e) => setPlan((p) => ({ ...p, targetVsActualMenuNote: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs font-medium text-brand-text/70">Future food/packaging cost comparison</label>
+              <textarea
+                className="mt-1 min-h-[40px] w-full rounded-ref-sm border border-brand-text/12 bg-white px-2 py-1.5 text-xs"
+                value={plan.futureFoodPackagingCostNote}
+                onChange={(e) => setPlan((p) => ({ ...p, futureFoodPackagingCostNote: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-brand-text/70">Future GP visibility</label>
+              <textarea
+                className="mt-1 min-h-[40px] w-full rounded-ref-sm border border-brand-text/12 bg-white px-2 py-1.5 text-xs"
+                value={plan.futureGpVisibilityNote}
+                onChange={(e) => setPlan((p) => ({ ...p, futureGpVisibilityNote: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+        <p className="text-[11px] text-brand-text/50">
+          Recommended future tiles (no live data yet): target vs actual by SKU, top 3 GMV, top 3 portions, revenue by
+          product, combo savings roll-up, low-stock blockers, closing variance highlights — detail in the planning hub.
+        </p>
+      </div>
+    </Card>
   );
 }
 
